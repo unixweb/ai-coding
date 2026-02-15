@@ -1,6 +1,6 @@
 # PROJ-3: Task-Verwaltung
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-02-15
 **Last Updated:** 2026-02-15
 
@@ -58,7 +58,175 @@
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+**Added:** 2026-02-15
+
+### Komponenten-Struktur
+
+```
+Task-Verwaltungs-System (innerhalb eines Projekts)
+│
+├── Projekt-Detail-Seite (/projects/[id])
+│   ├── Projekt-Header
+│   │   ├── Projekt-Name & Beschreibung
+│   │   ├── "Zurück zu Projekten"-Link
+│   │   └── Projekt-Aktionen (Bearbeiten, Archivieren)
+│   │
+│   ├── Task-Toolbar
+│   │   ├── "Neuen Task erstellen"-Button
+│   │   ├── Ansichts-Toggle (Kanban / Liste)
+│   │   └── Filter-Dropdown
+│   │       ├── Filter nach Status (To Do, In Progress, Completed)
+│   │       ├── Filter nach Zuständiger Person
+│   │       └── Filter nach Fälligkeitsdatum (Heute, Diese Woche, Überfällig)
+│   │
+│   ├── Kanban-Board-Ansicht (Standard)
+│   │   ├── "To Do"-Spalte
+│   │   │   └── Task-Cards (drag & drop)
+│   │   ├── "In Progress"-Spalte
+│   │   │   └── Task-Cards (drag & drop)
+│   │   └── "Completed"-Spalte
+│   │       └── Task-Cards (drag & drop)
+│   │
+│   ├── Listen-Ansicht (Alternative)
+│   │   └── Task-Table
+│   │       ├── Spalten: Titel, Status, Zuständig, Fälligkeitsdatum
+│   │       ├── Sortierung nach allen Spalten
+│   │       └── Inline-Aktionen pro Task
+│   │
+│   └── Leerer Zustand (wenn keine Tasks)
+│       ├── Illustration/Icon
+│       ├── Text: "Noch keine Tasks in diesem Projekt"
+│       └── "Ersten Task erstellen"-Button
+│
+├── Task-Card (wiederverwendbar)
+│   ├── Task-Titel
+│   ├── Status-Badge (farbcodiert)
+│   ├── Zuständige Person (Avatar + Name)
+│   ├── Fälligkeitsdatum (rot wenn überfällig)
+│   ├── Beschreibung (gekürzt, ausklappbar)
+│   └── Aktions-Menü (3-Punkte-Dropdown)
+│       ├── "Details anzeigen"
+│       ├── "Bearbeiten"
+│       ├── "Status ändern" (Submenu)
+│       └── "Löschen"
+│
+├── Task-Erstellen-Dialog (Modal)
+│   ├── Titel: "Neuen Task erstellen"
+│   ├── Task-Titel-Eingabefeld (Pflichtfeld, max. 200 Zeichen)
+│   ├── Beschreibung-Textarea (optional)
+│   ├── Zuständige Person-Select (Dropdown mit Team-Mitgliedern)
+│   ├── Fälligkeitsdatum-DatePicker (optional)
+│   ├── Status-Select (To Do, In Progress, Completed - Standard: To Do)
+│   ├── "Abbrechen"-Button
+│   └── "Task erstellen"-Button
+│
+├── Task-Bearbeiten-Dialog (Modal)
+│   ├── Titel: "Task bearbeiten"
+│   ├── Alle Felder wie "Erstellen", aber vorausgefüllt
+│   ├── "Abbrechen"-Button
+│   └── "Änderungen speichern"-Button
+│
+├── Task-Details-Drawer (Seitenpanel)
+│   ├── Task-Titel (editierbar on-click)
+│   ├── Status-Select (inline änderbar)
+│   ├── Zuständige Person (inline änderbar)
+│   ├── Fälligkeitsdatum (inline änderbar)
+│   ├── Beschreibung (vollständig, editierbar)
+│   ├── Erstellt am / Zuletzt geändert
+│   ├── "Task löschen"-Button (unten)
+│   └── "Schließen"-Button
+│
+└── Task-Löschen-Bestätigungs-Dialog
+    ├── Titel: "Task löschen?"
+    ├── Warntext: "Diese Aktion kann nicht rückgängig gemacht werden"
+    ├── "Abbrechen"-Button
+    └── "Endgültig löschen"-Button (rot)
+```
+
+**Zusätzlich:**
+- Drag & Drop (Tasks zwischen Spalten ziehen)
+- Loading-States (Skeleton)
+- Error-Handling (Toast)
+- Überfällig-Indikator (rot bei Datum < heute)
+
+### Datenmodell
+
+**Task-Informationen (Supabase PostgreSQL):**
+
+Jeder Task enthält:
+- Eindeutige Task-ID (UUID, automatisch)
+- Projekt-ID (Foreign Key zu PROJ-2)
+- Titel (max. 200 Zeichen, Pflichtfeld)
+- Beschreibung (optional, unbegrenzt)
+- Zuständige Person (User-ID, optional - kann NULL sein)
+- Status (To Do / In Progress / Completed, Standard: To Do)
+- Fälligkeitsdatum (optional)
+- Erstelldatum (Timestamp, automatisch)
+- Letztes Änderungsdatum (Timestamp, automatisch)
+
+**Speicherort:** Supabase PostgreSQL-Datenbank
+
+**Sortierung:**
+- Kanban: Nach Fälligkeitsdatum (überfällig zuerst)
+- Liste: Benutzerdefiniert
+
+**Sicherheit:** Row Level Security (Tasks nur in eigenen Projekten)
+
+**Beziehungen:**
+- Task → Projekt (project_id, CASCADE on delete)
+- Task → Person (assigned_to, SET NULL on delete)
+
+### Tech-Entscheidungen
+
+**1. Kanban-Board als Haupt-Ansicht**
+- Perfekt für Software-Teams (Agile)
+- Status visuell sofort erkennbar
+- Natürliches Drag & Drop (wie Trello)
+
+**2. Drag & Drop für Status-Änderung**
+- Schneller als Dropdown (weniger Klicks)
+- Intuitive Bedienung
+- Technologie: `@dnd-kit/core` (barrierefrei)
+
+**3. Sheet (Seitenpanel) für Task-Details**
+- Mehr Platz als Dialog
+- Kontext bleibt sichtbar
+- Inline-Bearbeitung fühlt sich schnell an
+
+**4. Farbcodierung**
+- Schnelle visuelle Erfassung
+- To Do: Grau, In Progress: Blau, Completed: Grün
+- Überfällig: Roter Akzent
+
+**5. Optimistic Updates + Realtime Sync**
+- UI reagiert sofort (< 300ms Ziel)
+- Drag & Drop ohne Verzögerung
+- Supabase Realtime für Team-Sync
+
+**6. DatePicker für Fälligkeitsdatum**
+- Verhindert ungültige Eingaben
+- Kalender intuitiver als manuell
+- Warnung bei Vergangenheits-Datum
+
+**7. Filter kombinierbar**
+- Flexibilität ("Meine überfälligen Tasks")
+- Filter-Chips zeigen aktive Filter
+
+### Benötigte Pakete
+
+**Neu zu installieren:**
+- `@dnd-kit/core` - Drag & Drop Kern
+- `@dnd-kit/sortable` - Sortierbare Listen
+- `@dnd-kit/utilities` - DnD Hilfs-Funktionen
+- `date-fns` - Datums-Formatierung und Vergleich
+
+**Bereits vorhanden:**
+- `@supabase/supabase-js`, `@supabase/ssr` (PROJ-1)
+- `react-hook-form`, `@hookform/resolvers`, `zod` (PROJ-1)
+- shadcn/ui: Card, Button, Dialog, Sheet, Input, Textarea, Select, Badge, Table, Dropdown-Menu, Skeleton, Toast
+
+**Optional:**
+- shadcn/ui DatePicker (basiert auf `react-day-picker`)
 
 ## QA Test Results
 _To be added by /qa_
