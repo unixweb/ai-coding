@@ -1,6 +1,6 @@
 # PROJ-1: Benutzer-Authentifizierung
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-02-15
 **Last Updated:** 2026-02-15
 
@@ -51,7 +51,98 @@
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+**Added:** 2026-02-15
+
+### Komponenten-Struktur
+
+```
+Authentifizierungs-System
+│
+├── Registrierungs-Seite (/signup)
+│   ├── E-Mail-Eingabefeld
+│   ├── Passwort-Eingabefeld (mit Sichtbarkeits-Toggle)
+│   ├── Name-Eingabefeld
+│   ├── "Registrieren"-Button
+│   └── Link zur Login-Seite
+│
+├── Login-Seite (/login)
+│   ├── E-Mail-Eingabefeld
+│   ├── Passwort-Eingabefeld (mit Sichtbarkeits-Toggle)
+│   ├── "Einloggen"-Button
+│   ├── "Passwort vergessen?"-Link
+│   └── Link zur Registrierungs-Seite
+│
+├── Passwort-Zurücksetzen-Seite (/reset-password)
+│   ├── E-Mail-Eingabefeld
+│   ├── "Link senden"-Button
+│   └── Erfolgsmeldung
+│
+├── Neues-Passwort-Seite (/update-password)
+│   ├── Neues-Passwort-Eingabefeld
+│   ├── Passwort-Bestätigung-Eingabefeld
+│   ├── "Passwort aktualisieren"-Button
+│   └── Erfolgsmeldung
+│
+└── Profil-Seite (/profile)
+    ├── Name-Eingabefeld (editierbar)
+    ├── E-Mail-Eingabefeld (editierbar)
+    ├── "Änderungen speichern"-Button
+    └── "Ausloggen"-Button
+```
+
+**Zusätzlich benötigt:**
+- Auth-Schutz-Komponente (prüft Login-Status vor geschützten Seiten)
+- Error-Toast-Komponente (bereits vorhanden: Sonner)
+- Loading-States (Spinner während Aktionen)
+
+### Datenmodell
+
+**Benutzer-Informationen (Supabase Auth):**
+- Eindeutige Benutzer-ID (UUID)
+- E-Mail-Adresse (eindeutig, validiert)
+- Passwort (gehasht mit bcrypt)
+- Name (editierbar im Profil)
+- Erstellungsdatum
+- Letzte Anmeldung
+
+**Session-Informationen:**
+- Session-Token (verschlüsselt, im Browser-Cookie)
+- Ablaufzeit (automatisch verwaltet)
+
+**Speicherort:** Supabase Auth (Cloud-Datenbank)
+
+### Tech-Entscheidungen
+
+**1. Supabase Auth**
+- Supabase kümmert sich um Sicherheit (bcrypt, Token-Verwaltung, HTTPS)
+- E-Mail-Versand für Passwort-Reset integriert
+- Kostenlos bis 50.000 monatliche Benutzer
+
+**2. Session-basierte Authentifizierung**
+- Sicherer als JWT-Tokens im Browser-Storage
+- Session-Cookie automatisch bei jedem Request
+- Benutzer bleibt eingeloggt nach Browser-Neustart
+
+**3. shadcn/ui Komponenten**
+- Bereits installiert, einheitliches Design
+- Barrierefrei (ARIA-Labels)
+
+**4. React Hook Form + Zod**
+- Einfache Validierung (z.B. Passwort min. 8 Zeichen)
+- Fehler werden sofort angezeigt
+- Weniger Server-Requests
+
+### Benötigte Pakete
+
+**Neu zu installieren:**
+- `@supabase/supabase-js` - Supabase Client
+- `@supabase/ssr` - Server-Side Rendering Support
+- `react-hook-form` - Formular-Handling
+- `@hookform/resolvers` - Zod-Integration
+- `zod` - Schema-Validierung
+
+**Bereits vorhanden:**
+- shadcn/ui (Button, Input, Card, Form, Label, Toast)
 
 ## QA Test Results
 _To be added by /qa_
