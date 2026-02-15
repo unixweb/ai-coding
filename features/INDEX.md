@@ -16,7 +16,7 @@
 | PROJ-2 | Projekt-Verwaltung | In Progress | [PROJ-2-project-management.md](PROJ-2-project-management.md) | 2026-02-15 |
 | PROJ-3 | Task-Verwaltung | In Progress | [PROJ-3-task-management.md](PROJ-3-task-management.md) | 2026-02-15 |
 | PROJ-4 | Team-Zusammenarbeit | In Progress | [PROJ-4-team-collaboration.md](PROJ-4-team-collaboration.md) | 2026-02-15 |
-| PROJ-5 | Fortschritts-Dashboard | Planned | [PROJ-5-progress-dashboard.md](PROJ-5-progress-dashboard.md) | 2026-02-15 |
+| PROJ-5 | Fortschritts-Dashboard | In Progress | [PROJ-5-progress-dashboard.md](PROJ-5-progress-dashboard.md) | 2026-02-15 |
 
 <!-- Add features above this line -->
 
