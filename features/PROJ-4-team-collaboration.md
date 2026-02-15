@@ -1,6 +1,6 @@
 # PROJ-4: Team-Zusammenarbeit
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-02-15
 **Last Updated:** 2026-02-15
 
@@ -57,7 +57,170 @@
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+**Added:** 2026-02-15
+
+### Komponenten-Struktur
+
+```
+Team-Verwaltungs-System
+│
+├── Team-Seite (/team)
+│   ├── Team-Header
+│   │   ├── Team-Name (editierbar für Admins)
+│   │   └── "Mitglied einladen"-Button (nur für Admins)
+│   │
+│   ├── Aktive Teammitglieder-Liste
+│   │   ├── Teammitglied-Card (wiederverwendbar)
+│   │   │   ├── Avatar (Initialen oder Foto)
+│   │   │   ├── Name & E-Mail
+│   │   │   ├── Rollen-Badge (Admin/Member/Viewer)
+│   │   │   ├── Beitrittsdatum
+│   │   │   └── Aktions-Menü (3-Punkte, nur für Admins)
+│   │   │       ├── "Rolle ändern" (Submenu: Admin, Member, Viewer)
+│   │   │       └── "Aus Team entfernen"
+│   │   └── Sortierung: Admins zuerst, dann alphabetisch
+│   │
+│   ├── Ausstehende Einladungen-Sektion (kollapsierbar)
+│   │   ├── Einladungs-Card
+│   │   │   ├── E-Mail-Adresse
+│   │   │   ├── Rolle (Badge)
+│   │   │   ├── Ablaufdatum (z.B. "Läuft ab in 3 Tagen")
+│   │   │   ├── "Einladung zurückziehen"-Button
+│   │   │   └── "Einladung erneut senden"-Button
+│   │   └── Leerer Zustand: "Keine ausstehenden Einladungen"
+│   │
+│   └── Leerer Zustand (wenn nur 1 Mitglied)
+│       ├── Illustration/Icon
+│       ├── Text: "Laden Sie Ihr Team ein"
+│       └── "Erstes Mitglied einladen"-Button
+│
+├── Mitglied-Einladen-Dialog (Modal)
+│   ├── Titel: "Teammitglied einladen"
+│   ├── E-Mail-Adresse-Eingabefeld (Pflichtfeld)
+│   ├── Rolle-Select (Admin, Member, Viewer - Standard: Member)
+│   ├── Rollen-Erklärung (Info-Box)
+│   │   ├── Admin: Volle Rechte, kann Mitglieder verwalten
+│   │   ├── Member: Kann Projekte & Tasks erstellen
+│   │   └── Viewer: Nur lesen, keine Bearbeitung
+│   ├── "Abbrechen"-Button
+│   └── "Einladung senden"-Button
+│
+├── Rolle-Ändern-Dialog (Modal)
+│   ├── Titel: "Rolle von [Name] ändern"
+│   ├── Aktuell: [Aktuelle Rolle]
+│   ├── Neue Rolle-Select (Admin, Member, Viewer)
+│   ├── Warnung (wenn letzter Admin zu Member/Viewer wird):
+│   │   "Achtung: Dies ist der letzte Admin. Es muss mindestens ein Admin bleiben."
+│   ├── "Abbrechen"-Button
+│   └── "Rolle ändern"-Button
+│
+├── Mitglied-Entfernen-Bestätigungs-Dialog
+│   ├── Titel: "Mitglied entfernen?"
+│   ├── Warntext: "[Name] verliert Zugriff auf alle Projekte"
+│   ├── Info: "Zugewiesene Tasks werden auf 'Nicht zugewiesen' gesetzt"
+│   ├── Warnung (wenn letzter Admin): "Verhindert - es muss mindestens ein Admin bleiben"
+│   ├── "Abbrechen"-Button
+│   └── "Entfernen"-Button (rot, disabled wenn letzter Admin)
+│
+├── Einladungs-Akzeptieren-Seite (/accept-invitation?token=xxx)
+│   ├── Team-Info (Name, Anzahl Mitglieder)
+│   ├── Einladung-Details (Rolle, von wem eingeladen)
+│   ├── Ablaufdatum-Warnung (wenn < 24h)
+│   ├── "Einladung annehmen"-Button
+│   ├── "Ablehnen"-Button
+│   └── Error-State (wenn Token abgelaufen oder ungültig)
+│
+└── Berechtigungs-Prüfung-Komponenten (unsichtbar)
+    ├── Admin-Guard (zeigt Content nur für Admins)
+    ├── Member-Guard (zeigt Content nur für Members+Admins)
+    └── Viewer-Guard (zeigt Content für alle)
+```
+
+**Zusätzlich:**
+- E-Mail-Vorlagen (Einladungs-E-Mail)
+- Loading-States (Skeleton)
+- Error-Handling (Toast)
+- Real-time Updates (Mitglieder-Liste)
+
+### Datenmodell
+
+**Team-Informationen (Supabase PostgreSQL):**
+
+**1. Teams-Tabelle:**
+- Team-ID (UUID)
+- Team-Name (editierbar)
+- Erstelldatum
+
+**2. Team-Mitglieder (team_members):**
+- Eindeutige ID (UUID)
+- User-ID (aus PROJ-1)
+- Team-ID
+- Rolle (Admin / Member / Viewer)
+- Beitrittsdatum
+
+**3. Einladungen (team_invitations):**
+- Einladungs-ID (UUID)
+- E-Mail-Adresse
+- Team-ID
+- Rolle (Admin / Member / Viewer)
+- Einladungs-Token (UUID für Accept-Link)
+- Ablaufdatum (erstellt + 7 Tage)
+- Eingeladen von (User-ID)
+- Erstelldatum
+- Status (Pending / Accepted / Expired / Revoked)
+
+**Rollen-Berechtigungen:**
+- **Admin:** Volle Rechte
+- **Member:** Projekte & Tasks erstellen/bearbeiten
+- **Viewer:** Nur lesen
+
+**Speicherort:** Supabase PostgreSQL
+
+**Sicherheit:** Row Level Security (rollenbasiert)
+
+### Tech-Entscheidungen
+
+**1. Supabase Auth für Einladungs-E-Mails**
+- E-Mail-Versand bereits integriert (PROJ-1)
+- Kostenlos im Free-Tier
+- Keine zusätzliche Integration nötig
+
+**2. Token-basierte Einladungen (UUID)**
+- Sicherer als E-Mail im Link
+- Einmalig verwendbar, läuft ab
+- Verhindert Phishing
+
+**3. Row Level Security für Rollen**
+- Sicherheit auf Datenbank-Ebene
+- Viewer können keine Projekte erstellen (auch via API nicht)
+- Admins sehen alle Daten
+
+**4. Automatischer Admin für ersten Benutzer**
+- Löst Bootstrap-Problem
+- Ältester User im Team = Admin
+
+**5. "Mindestens ein Admin"-Regel**
+- Verhindert Aussperren
+- Frontend-Validierung + Backend-Constraint
+
+**6. Soft-Delete für Task-Zuweisungen**
+- Tasks bleiben bestehen
+- assigned_to → NULL (SET NULL)
+- Keine Datenverlust
+
+**7. Ablaufende Einladungen (7 Tage)**
+- Sicherheit (alte Links ungültig)
+- Kann erneut gesendet werden
+
+### Benötigte Pakete
+
+**Keine neuen Pakete erforderlich!**
+
+Alle bereits vorhanden:
+- `@supabase/supabase-js`, `@supabase/ssr` (PROJ-1)
+- `react-hook-form`, `@hookform/resolvers`, `zod` (PROJ-1)
+- `date-fns` (PROJ-3)
+- shadcn/ui: Card, Button, Dialog, Select, Badge, Avatar, Toast
 
 ## QA Test Results
 _To be added by /qa_
