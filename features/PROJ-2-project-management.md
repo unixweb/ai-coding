@@ -1,6 +1,6 @@
 # PROJ-2: Projekt-Verwaltung
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-02-15
 **Last Updated:** 2026-02-15
 
@@ -52,7 +52,119 @@
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+**Added:** 2026-02-15
+
+### Komponenten-Struktur
+
+```
+Projekt-Verwaltungs-System
+│
+├── Projekt-Übersichts-Seite (/projects)
+│   ├── Header mit "Neues Projekt erstellen"-Button
+│   ├── Filter-Tabs
+│   │   ├── "Aktive Projekte" (Standard)
+│   │   └── "Archivierte Projekte"
+│   ├── Projekt-Liste (Card-Grid)
+│   │   ├── Projekt-Card (wiederverwendbar)
+│   │   │   ├── Projekt-Name
+│   │   │   ├── Beschreibung (gekürzt auf 2 Zeilen)
+│   │   │   ├── Anzahl Tasks (Badge)
+│   │   │   ├── Erstelldatum
+│   │   │   ├── Status-Badge (Active/Archived)
+│   │   │   └── Aktions-Menü (3-Punkte-Dropdown)
+│   │   │       ├── "Bearbeiten"
+│   │   │       ├── "Archivieren" oder "Reaktivieren"
+│   │   │       └── "Löschen"
+│   └── Leerer Zustand (wenn keine Projekte)
+│       ├── Illustration/Icon
+│       ├── Text: "Noch keine Projekte"
+│       └── "Erstes Projekt erstellen"-Button
+│
+├── Projekt-Erstellen-Dialog (Modal)
+│   ├── Titel: "Neues Projekt"
+│   ├── Projekt-Name-Eingabefeld (Pflichtfeld)
+│   ├── Beschreibung-Textarea (optional)
+│   ├── "Abbrechen"-Button
+│   └── "Projekt erstellen"-Button
+│
+├── Projekt-Bearbeiten-Dialog (Modal)
+│   ├── Titel: "Projekt bearbeiten"
+│   ├── Projekt-Name-Eingabefeld (vorausgefüllt)
+│   ├── Beschreibung-Textarea (vorausgefüllt)
+│   ├── Status-Select (Active/Archived)
+│   ├── "Abbrechen"-Button
+│   └── "Änderungen speichern"-Button
+│
+└── Projekt-Löschen-Bestätigungs-Dialog
+    ├── Titel: "Projekt löschen?"
+    ├── Warntext: "Diese Aktion kann nicht rückgängig gemacht werden"
+    ├── Fehlerhinweis (wenn Tasks existieren): "Projekt enthält noch Tasks"
+    ├── "Abbrechen"-Button
+    └── "Endgültig löschen"-Button (rot)
+```
+
+**Zusätzlich:**
+- Loading-States (Skeleton-Cards während Laden)
+- Error-Handling (Toast-Benachrichtigungen)
+- Auth-Schutz (nur für eingeloggte Benutzer)
+
+### Datenmodell
+
+**Projekt-Informationen (Supabase PostgreSQL):**
+
+Jedes Projekt enthält:
+- Eindeutige Projekt-ID (UUID, automatisch)
+- Benutzer-ID (verknüpft mit PROJ-1)
+- Name (max. 100 Zeichen, Pflichtfeld)
+- Beschreibung (optional, unbegrenzt)
+- Status (Active/Archived, Standard: Active)
+- Erstelldatum (Timestamp, automatisch)
+- Letztes Änderungsdatum (Timestamp, automatisch)
+- Task-Anzahl (berechnet aus PROJ-3, nicht gespeichert)
+
+**Speicherort:** Supabase PostgreSQL-Datenbank
+
+**Sortierung:** Nach Erstelldatum (neueste zuerst)
+
+**Sicherheit:** Row Level Security (Benutzer sehen nur eigene Projekte)
+
+### Tech-Entscheidungen
+
+**1. Supabase PostgreSQL**
+- Daten-Synchronisation über mehrere Geräte
+- Team-Mitglieder greifen später auf dieselben Projekte zu (PROJ-4)
+- Automatische Backups, kein Datenverlust
+
+**2. Row Level Security (RLS)**
+- Sicherheit auf Datenbank-Ebene
+- Benutzer sehen nur eigene Projekte
+- Schutz vor direkten API-Aufrufen
+
+**3. shadcn/ui Dialog + Card**
+- Bereits installiert, barrierefreie Dialoge
+- Card-Grid für übersichtliche Projekt-Darstellung
+
+**4. React Hook Form + Zod**
+- Konsistent mit PROJ-1
+- Validierung vor Server-Request
+- Klare Fehlermeldungen
+
+**5. Optimistic Updates**
+- UI reagiert sofort (< 500ms Ziel)
+- Rollback bei Server-Fehler
+
+**6. Dropdown-Menü**
+- Platzsparend, cleaner Look
+- Alle Aktionen an einem Ort
+
+### Benötigte Pakete
+
+**Keine neuen Pakete erforderlich!**
+
+Alle bereits vorhanden:
+- `@supabase/supabase-js`, `@supabase/ssr` (PROJ-1)
+- `react-hook-form`, `@hookform/resolvers`, `zod` (PROJ-1)
+- shadcn/ui: Card, Button, Dialog, Input, Textarea, Select, Dropdown-Menu, Badge, Skeleton, Toast
 
 ## QA Test Results
 _To be added by /qa_
