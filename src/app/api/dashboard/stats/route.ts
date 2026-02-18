@@ -15,7 +15,7 @@ export async function GET() {
 
     // Get user's teams
     const { data: teamMembers } = await supabase
-      .from('team_members')
+      .from('tsk_team_members')
       .select('team_id')
       .eq('user_id', user.id)
 
@@ -35,13 +35,13 @@ export async function GET() {
 
     // Get total active projects
     const { count: total_projects } = await supabase
-      .from('projects')
+      .from('tsk_projects')
       .select('*', { count: 'exact', head: true })
       .in('team_id', teamIds)
 
     // Get project IDs first
     const { data: projects } = await supabase
-      .from('projects')
+      .from('tsk_projects')
       .select('id')
       .in('team_id', teamIds)
 
@@ -50,7 +50,7 @@ export async function GET() {
     // Get all tasks for these projects
     const { data: allTasks } = projectIds.length > 0
       ? await supabase
-          .from('tasks')
+          .from('tsk_tasks')
           .select('status, due_date')
           .in('project_id', projectIds)
       : { data: [] }

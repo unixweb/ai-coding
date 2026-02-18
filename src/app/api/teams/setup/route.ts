@@ -21,7 +21,7 @@ export async function POST() {
     // Check if user already has a team
     const { data: existingMembership, error: membershipError } = await supabase
       
-      .from('team_members')
+      .from('tsk_team_members')
       .select('id')
       .eq('user_id', user.id)
       .limit(1)
@@ -45,7 +45,7 @@ export async function POST() {
 
     const { data: newTeam, error: teamError } = await supabase
       
-      .from('teams')
+      .from('tsk_teams')
       .insert({ name: teamName })
       .select()
       .single()
@@ -58,7 +58,7 @@ export async function POST() {
     // Add user as admin of their team
     const { error: memberError } = await supabase
       
-      .from('team_members')
+      .from('tsk_team_members')
       .insert({
         team_id: newTeam.id,
         user_id: user.id,

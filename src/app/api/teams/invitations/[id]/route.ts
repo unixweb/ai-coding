@@ -18,7 +18,7 @@ export async function DELETE(
     }
 
     const { error } = await supabase
-      .from('team_invitations')
+      .from('tsk_team_invitations')
       .delete()
       .eq('id', id)
 

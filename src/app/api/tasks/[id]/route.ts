@@ -19,7 +19,7 @@ export async function GET(
     const supabase = await createClient()
 
     const { data: task, error } = await supabase
-      .from('tasks')
+      .from('tsk_tasks')
       .select(`
         *,
         project:projects(id, name),
@@ -53,7 +53,7 @@ export async function PUT(
     const supabase = await createClient()
 
     const { data: task, error } = await supabase
-      .from('tasks')
+      .from('tsk_tasks')
       .update(updates)
       .eq('id', id)
       .select(`
@@ -91,7 +91,7 @@ export async function DELETE(
     const supabase = await createClient()
 
     const { error } = await supabase
-      .from('tasks')
+      .from('tsk_tasks')
       .delete()
       .eq('id', id)
 

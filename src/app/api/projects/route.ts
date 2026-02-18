@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const supabase = await createClient()
 
     const { data: projects, error } = await supabase
-      .from('projects')
+      .from('tsk_projects')
       .select(`
         *,
         team:teams(id, name),
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     // If no team_id provided, use user's first team
     if (!team_id) {
       const { data: membership, error: membershipError } = await supabase
-        .from('team_members')
+        .from('tsk_team_members')
         .select('team_id')
         .eq('user_id', user.id)
         .limit(1)
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     const { data: project, error } = await supabase
-      .from('projects')
+      .from('tsk_projects')
       .insert({ name, description, team_id })
       .select()
       .single()
