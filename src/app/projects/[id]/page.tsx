@@ -150,7 +150,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
       updateTaskStatus(taskId, status);
       const task = tasks.find((t) => t.id === taskId);
       const statusLabels: Record<TaskStatus, string> = {
-        todo: "To Do",
+        to_do: "To Do",
         in_progress: "In Progress",
         completed: "Completed",
       };
