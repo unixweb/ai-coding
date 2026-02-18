@@ -37,8 +37,8 @@ export default function LoginPage() {
 
       toast.success('Erfolgreich angemeldet!')
 
-      // Redirect to projects page
-      window.location.href = '/projects'
+      // Redirect to dashboard
+      window.location.href = '/dashboard'
     } catch (error) {
       toast.error('Ein Fehler ist aufgetreten')
     } finally {

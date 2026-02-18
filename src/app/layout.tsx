@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
+import { ConditionalNav } from "@/components/conditional-nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Coding Starter Kit",
-  description: "Built with AI Agent Team System",
+  title: "TaskManager - Projekt- und Task-Verwaltung",
+  description: "Einfaches Projekt- und Task-Management für kleine Teams",
 };
 
 export default function RootLayout({
@@ -13,8 +14,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="de">
       <body className="antialiased">
+        <ConditionalNav />
         {children}
         <Toaster position="top-center" richColors />
       </body>
