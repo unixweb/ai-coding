@@ -20,8 +20,8 @@ export async function GET(
       .from('tsk_projects')
       .select(`
         *,
-        team:teams(id, name),
-        tasks:tasks(count)
+        team:tsk_teams(id, name),
+        tasks:tsk_tasks(count)
       `)
       .eq('id', id)
       .single()

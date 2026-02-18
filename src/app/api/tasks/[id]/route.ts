@@ -22,7 +22,7 @@ export async function GET(
       .from('tsk_tasks')
       .select(`
         *,
-        project:projects(id, name),
+        project:tsk_projects(id, name),
         assignee:profiles!assigned_to(id, name, email)
       `)
       .eq('id', id)
@@ -58,7 +58,7 @@ export async function PUT(
       .eq('id', id)
       .select(`
         *,
-        project:projects(id, name),
+        project:tsk_projects(id, name),
         assignee:profiles!assigned_to(id, name, email)
       `)
       .single()

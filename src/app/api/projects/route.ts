@@ -16,8 +16,8 @@ export async function GET(request: Request) {
       .from('tsk_projects')
       .select(`
         *,
-        team:teams(id, name),
-        tasks:tasks(count)
+        team:tsk_teams(id, name),
+        tasks:tsk_tasks(count)
       `)
       .order('created_at', { ascending: false })
 
