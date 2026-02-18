@@ -162,7 +162,7 @@ export function KanbanBoard({
 
   const tasksByStatus = useMemo(() => {
     const grouped: Record<TaskStatus, Task[]> = {
-      todo: [],
+      to_do: [],
       in_progress: [],
       completed: [],
     };

@@ -153,7 +153,7 @@ export function TaskToolbar({
                     <SelectContent>
                       <SelectItem value="all">Alle Status</SelectItem>
                       <SelectItem value="to_do">
-                        {TASK_STATUS_LABELS.todo}
+                        {TASK_STATUS_LABELS.to_do}
                       </SelectItem>
                       <SelectItem value="in_progress">
                         {TASK_STATUS_LABELS.in_progress}
