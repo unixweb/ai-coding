@@ -1,8 +1,53 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function Home() {
+  const router = useRouter()
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    // Check if user is logged in
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/profile')
+        if (res.ok) {
+          // User is logged in, redirect to dashboard
+          router.push('/dashboard')
+        } else {
+          // User is not logged in, show landing page
+          setChecking(false)
+        }
+      } catch (error) {
+        // Error checking auth, show landing page
+        setChecking(false)
+      }
+    }
+
+    checkAuth()
+  }, [router])
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <Skeleton className="h-8 w-48 mx-auto" />
+            <Skeleton className="h-4 w-64 mx-auto mt-2" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-20 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
       <Card className="w-full max-w-md">

@@ -241,7 +241,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Completion Rate */}
-        <Card>
+        <Card className={stats.completion_rate === 100 && stats.total_tasks > 0 ? 'border-green-500 bg-green-50 dark:bg-green-950' : ''}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Abschlussrate</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -250,7 +250,13 @@ export default function DashboardPage() {
             <div className="text-2xl font-bold">{stats.completion_rate}%</div>
             <Progress value={stats.completion_rate} className="mt-2" />
             <p className="mt-2 text-xs text-muted-foreground">
-              {stats.tasks_by_status.completed} von {stats.total_tasks} erledigt
+              {stats.completion_rate === 100 && stats.total_tasks > 0 ? (
+                <span className="text-green-600 dark:text-green-400 font-medium">
+                  🎉 Herzlichen Glückwunsch! Alle Tasks abgeschlossen!
+                </span>
+              ) : (
+                `${stats.tasks_by_status.completed} von ${stats.total_tasks} erledigt`
+              )}
             </p>
           </CardContent>
         </Card>

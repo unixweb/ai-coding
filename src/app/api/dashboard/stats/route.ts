@@ -47,33 +47,65 @@ export async function GET() {
 
     const projectIds = projects?.map((p) => p.id) || []
 
-    // Get all tasks for these projects
-    const { data: allTasks } = projectIds.length > 0
-      ? await supabase
-          .from('tsk_tasks')
-          .select('status, due_date')
-          .in('project_id', projectIds)
-      : { data: [] }
+    if (projectIds.length === 0) {
+      return NextResponse.json({
+        stats: {
+          total_projects: total_projects || 0,
+          total_tasks: 0,
+          tasks_by_status: { to_do: 0, in_progress: 0, completed: 0 },
+          completion_rate: 0,
+          overdue_tasks: 0,
+        },
+      })
+    }
 
-    const total_tasks = allTasks?.length || 0
+    // Use database-level COUNT instead of loading all tasks into memory
+    const today = new Date().toISOString().split('T')[0]
 
-    // Count by status
+    // Get total tasks count
+    const { count: total_tasks } = await supabase
+      .from('tsk_tasks')
+      .select('*', { count: 'exact', head: true })
+      .in('project_id', projectIds)
+
+    // Count by status using separate queries (more efficient than loading all data)
+    const { count: to_do_count } = await supabase
+      .from('tsk_tasks')
+      .select('*', { count: 'exact', head: true })
+      .in('project_id', projectIds)
+      .eq('status', 'to_do')
+
+    const { count: in_progress_count } = await supabase
+      .from('tsk_tasks')
+      .select('*', { count: 'exact', head: true })
+      .in('project_id', projectIds)
+      .eq('status', 'in_progress')
+
+    const { count: completed_count } = await supabase
+      .from('tsk_tasks')
+      .select('*', { count: 'exact', head: true })
+      .in('project_id', projectIds)
+      .eq('status', 'completed')
+
     const tasks_by_status = {
-      to_do: allTasks?.filter((t) => t.status === 'to_do').length || 0,
-      in_progress: allTasks?.filter((t) => t.status === 'in_progress').length || 0,
-      completed: allTasks?.filter((t) => t.status === 'completed').length || 0,
+      to_do: to_do_count || 0,
+      in_progress: in_progress_count || 0,
+      completed: completed_count || 0,
     }
 
     // Completion rate
     const completion_rate =
-      total_tasks > 0 ? Math.round((tasks_by_status.completed / total_tasks) * 100) : 0
+      total_tasks && total_tasks > 0
+        ? Math.round(((completed_count || 0) / total_tasks) * 100)
+        : 0
 
-    // Overdue tasks
-    const today = new Date().toISOString().split('T')[0]
-    const overdue_tasks =
-      allTasks?.filter(
-        (t) => t.due_date && t.due_date < today && t.status !== 'completed'
-      ).length || 0
+    // Count overdue tasks (due_date < today AND status != completed)
+    const { count: overdue_tasks } = await supabase
+      .from('tsk_tasks')
+      .select('*', { count: 'exact', head: true })
+      .in('project_id', projectIds)
+      .lt('due_date', today)
+      .neq('status', 'completed')
 
     return NextResponse.json({
       stats: {
