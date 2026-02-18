@@ -7,7 +7,7 @@ export interface TeamMember {
   user_id: string
   name: string
   email: string
-  avatar_url?: string | null
+  avatar_url: string | null
   role: 'admin' | 'member' | 'viewer'
   created_at: string
 }
@@ -27,7 +27,12 @@ export function useTeamMembers() {
       }
 
       const data = await res.json()
-      setMembers(data.members || [])
+      // Ensure avatar_url is set (defaults to null if not present)
+      const membersWithAvatar = (data.members || []).map((m: any) => ({
+        ...m,
+        avatar_url: m.avatar_url || null,
+      }))
+      setMembers(membersWithAvatar)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten')
