@@ -64,7 +64,7 @@ export default function ProfilePage() {
       const res = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: formData.name }),
+        body: JSON.stringify({ name: formData.name, email: formData.email }),
       })
 
       const data = await res.json()
@@ -85,7 +85,7 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
-      window.location.href = '/'
+      window.location.href = '/login'
     } catch (error) {
       toast.error('Fehler beim Abmelden')
     }
@@ -176,12 +176,9 @@ export default function ProfilePage() {
                 id="email"
                 type="email"
                 value={formData.email}
-                disabled
-                className="bg-muted"
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
               />
-              <p className="text-xs text-muted-foreground">
-                E-Mail-Adresse kann nicht geändert werden
-              </p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">

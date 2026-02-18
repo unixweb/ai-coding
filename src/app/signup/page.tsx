@@ -36,12 +36,10 @@ export default function SignupPage() {
         return
       }
 
-      toast.success('Registrierung erfolgreich! Bitte melden Sie sich an.')
+      toast.success('Registrierung erfolgreich!')
 
-      // Redirect to login page
-      setTimeout(() => {
-        router.push('/login')
-      }, 1000)
+      // Auto-login and redirect to dashboard
+      window.location.href = '/dashboard'
     } catch (error) {
       toast.error('Ein Fehler ist aufgetreten')
     } finally {

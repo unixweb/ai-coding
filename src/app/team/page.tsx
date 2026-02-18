@@ -52,6 +52,7 @@ interface TeamInvitation {
 }
 
 export default function TeamPage() {
+  const [teamId, setTeamId] = useState<string | null>(null)
   const [members, setMembers] = useState<TeamMember[]>([])
   const [invitations, setInvitations] = useState<TeamInvitation[]>([])
   const [loading, setLoading] = useState(true)
@@ -64,14 +65,38 @@ export default function TeamPage() {
   const [newRole, setNewRole] = useState<'admin' | 'member' | 'viewer'>('member')
 
   useEffect(() => {
-    loadTeamData()
+    loadCurrentTeam()
   }, [])
 
+  useEffect(() => {
+    if (teamId) {
+      loadTeamData()
+    }
+  }, [teamId])
+
+  const loadCurrentTeam = async () => {
+    try {
+      const res = await fetch('/api/teams/current')
+      if (!res.ok) {
+        toast.error('Fehler beim Laden des Teams')
+        setLoading(false)
+        return
+      }
+      const data = await res.json()
+      setTeamId(data.team_id)
+    } catch (error) {
+      toast.error('Ein Fehler ist aufgetreten')
+      setLoading(false)
+    }
+  }
+
   const loadTeamData = async () => {
+    if (!teamId) return
+
     try {
       const [membersRes, invitationsRes] = await Promise.all([
-        fetch('/api/teams/members'),
-        fetch('/api/teams/invitations'),
+        fetch(`/api/teams/members?team_id=${teamId}`),
+        fetch(`/api/teams/invitations?team_id=${teamId}`),
       ])
 
       if (membersRes.ok) {
@@ -91,11 +116,16 @@ export default function TeamPage() {
   }
 
   const handleInvite = async () => {
+    if (!teamId) {
+      toast.error('Team-ID fehlt')
+      return
+    }
+
     try {
       const res = await fetch('/api/teams/invitations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+        body: JSON.stringify({ team_id: teamId, email: inviteEmail, role: inviteRole }),
       })
 
       const data = await res.json()
