@@ -33,10 +33,15 @@ export function useTeamMembers(teamId?: string) {
       }
 
       const data = await res.json()
-      // Ensure avatar_url is set (defaults to null if not present)
+      // Map API response to TeamMember format
       const membersWithAvatar = (data.members || []).map((m: any) => ({
-        ...m,
-        avatar_url: m.avatar_url || null,
+        id: m.user?.id || m.user_id,
+        user_id: m.user_id,
+        name: m.user?.name || m.name || 'Unknown',
+        email: m.user?.email || m.email || '',
+        avatar_url: m.user?.avatar_url || m.avatar_url || null,
+        role: m.role,
+        created_at: m.created_at,
       }))
       setMembers(membersWithAvatar)
       setError(null)
