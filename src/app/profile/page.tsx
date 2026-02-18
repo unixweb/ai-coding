@@ -12,6 +12,7 @@ export default function ProfilePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [loadingProfile, setLoadingProfile] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -27,17 +28,29 @@ export default function ProfilePage() {
       const data = await res.json()
 
       if (!res.ok) {
-        toast.error('Fehler beim Laden des Profils')
-        router.push('/login')
+        // Show the actual error message instead of redirecting
+        const errorMsg = `${data.error || 'Unbekannter Fehler'} (HTTP ${res.status}${data.code ? ', Code: ' + data.code : ''})`
+        console.error('Profile load error:', { status: res.status, data })
+        setLoadError(errorMsg)
+        toast.error(errorMsg, { duration: 10000 })
+
+        // Only redirect if actually not authenticated (401)
+        if (res.status === 401) {
+          setTimeout(() => router.push('/login'), 2000)
+        }
         return
       }
 
       setFormData({
         name: data.profile?.name || '',
-        email: data.user?.email || '',
+        email: data.user?.email || data.profile?.email || '',
       })
+      setLoadError(null)
     } catch (error) {
-      toast.error('Ein Fehler ist aufgetreten')
+      const errorMsg = error instanceof Error ? error.message : 'Unbekannt'
+      console.error('Unexpected error loading profile:', error)
+      setLoadError(errorMsg)
+      toast.error('Ein Fehler ist aufgetreten: ' + errorMsg)
     } finally {
       setLoadingProfile(false)
     }
@@ -85,6 +98,51 @@ export default function ProfilePage() {
           <CardHeader>
             <CardTitle>Profil wird geladen...</CardTitle>
           </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Card className="w-full max-w-md border-destructive">
+          <CardHeader>
+            <CardTitle className="text-destructive">Fehler beim Laden des Profils</CardTitle>
+            <CardDescription className="text-sm">
+              {loadError}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md bg-muted p-4 text-sm">
+              <p className="font-semibold mb-2">Mögliche Lösungen:</p>
+              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                <li>Führe die SQL-Migration 005 in Supabase aus (siehe Git Commit)</li>
+                <li>Oder warte bis ein Admin die Datenbank-Migrationen deployed hat</li>
+                <li>Prüfe die Browser Console (F12) für Details</li>
+              </ol>
+            </div>
+          </CardContent>
+          <CardFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setLoadError(null)
+                setLoadingProfile(true)
+                loadProfile()
+              }}
+              className="flex-1"
+            >
+              Erneut versuchen
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push('/dashboard')}
+              className="flex-1"
+            >
+              Zum Dashboard
+            </Button>
+          </CardFooter>
         </Card>
       </div>
     )
