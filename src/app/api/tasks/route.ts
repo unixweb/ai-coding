@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const supabase = await createClient()
 
     let query = supabase
-      .schema('taskmanager').from('tasks')
+      .from('tasks')
       .select(`
         *,
         project:projects(id, name),
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     const supabase = await createClient()
 
     const { data: task, error } = await supabase
-      .schema('taskmanager').from('tasks')
+      .from('tasks')
       .insert(data)
       .select(`
         *,

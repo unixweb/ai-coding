@@ -17,7 +17,7 @@ export async function GET() {
     }
 
     const { data: profile, error: profileError } = await supabase
-      .schema('taskmanager').from('profiles')
+      .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single()
@@ -30,7 +30,7 @@ export async function GET() {
       if (profileError.code === 'PGRST116') {
         console.log('Creating new profile for user:', user.id)
         const { data: newProfile, error: createError } = await supabase
-          .schema('taskmanager').from('profiles')
+          .from('profiles')
           .insert({
             id: user.id,
             name: user.email?.split('@')[0] || 'User',
@@ -85,7 +85,7 @@ export async function PUT(request: Request) {
 
     // Update profile
     const { data: profile, error: profileError } = await supabase
-      .schema('taskmanager').from('profiles')
+      .from('profiles')
       .update(updates)
       .eq('id', user.id)
       .select()

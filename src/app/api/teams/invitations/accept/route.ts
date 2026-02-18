@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     // Get invitation
     const { data: invitation, error: invitationError } = await supabase
-      .schema('taskmanager').from('team_invitations')
+      .from('team_invitations')
       .select('*')
       .eq('token', token)
       .single()
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     // Check if invitation is expired
     if (new Date(invitation.expires_at) < new Date()) {
       await supabase
-        .schema('taskmanager').from('team_invitations')
+        .from('team_invitations')
         .update({ status: 'expired' })
         .eq('id', invitation.id)
 
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
     // Add user to team
     const { error: memberError } = await supabase
-      .schema('taskmanager').from('team_members')
+      .from('team_members')
       .insert({
         team_id: invitation.team_id,
         user_id: user.id,
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 
     // Update invitation status
     await supabase
-      .schema('taskmanager').from('team_invitations')
+      .from('team_invitations')
       .update({ status: 'accepted' })
       .eq('id', invitation.id)
 

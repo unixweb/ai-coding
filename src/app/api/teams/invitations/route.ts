@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const supabase = await createClient()
 
     const { data: invitations, error } = await supabase
-      .schema('taskmanager').from('team_invitations')
+      .from('team_invitations')
       .select('*')
       .eq('team_id', team_id)
       .eq('status', 'pending')
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
     // Check if email is already a team member
     const { data: existingMember } = await supabase
-      .schema('taskmanager').from('team_members')
+      .from('team_members')
       .select('id')
       .eq('team_id', team_id)
       .eq('user_id', user.id)
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 
     // Check if there's a pending invitation for this email
     const { data: existingInvitation } = await supabase
-      .schema('taskmanager').from('team_invitations')
+      .from('team_invitations')
       .select('id')
       .eq('team_id', team_id)
       .eq('email', email)
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
     // Create invitation
     const { data: invitation, error } = await supabase
-      .schema('taskmanager').from('team_invitations')
+      .from('team_invitations')
       .insert({
         team_id,
         email,
