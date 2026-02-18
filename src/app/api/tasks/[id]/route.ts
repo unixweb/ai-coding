@@ -12,9 +12,10 @@ const updateTaskSchema = z.object({
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
 
     const { data: task, error } = await supabase
@@ -24,7 +25,7 @@ export async function GET(
         project:projects(id, name),
         assignee:profiles!assigned_to(id, name, email)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error) {
@@ -42,9 +43,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const json = await request.json()
     const updates = updateTaskSchema.parse(json)
 
@@ -53,7 +55,7 @@ export async function PUT(
     const { data: task, error } = await supabase
       .from('tasks')
       .update(updates)
-      .eq('id', params.id)
+      .eq('id', id)
       .select(`
         *,
         project:projects(id, name),
@@ -69,7 +71,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.errors[0].message },
+        { error: error.issues[0].message },
         { status: 400 }
       )
     }
@@ -82,15 +84,16 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
 
     const { error } = await supabase
       .from('tasks')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })

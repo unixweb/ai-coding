@@ -8,9 +8,10 @@ const updateMemberSchema = z.object({
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const json = await request.json()
     const { role } = updateMemberSchema.parse(json)
 
@@ -20,7 +21,7 @@ export async function PUT(
     const { data: member } = await supabase
       .from('team_members')
       .select('team_id, role')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (member && member.role === 'admin' && role !== 'admin') {
@@ -41,7 +42,7 @@ export async function PUT(
     const { data: updatedMember, error } = await supabase
       .from('team_members')
       .update({ role })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -53,7 +54,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.errors[0].message },
+        { error: error.issues[0].message },
         { status: 400 }
       )
     }
@@ -66,9 +67,10 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
 
     const {
@@ -83,7 +85,7 @@ export async function DELETE(
     const { data: member } = await supabase
       .from('team_members')
       .select('team_id, user_id, role')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (!member) {
@@ -117,7 +119,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('team_members')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })

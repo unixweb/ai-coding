@@ -10,9 +10,10 @@ const updateProjectSchema = z.object({
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
 
     const { data: project, error } = await supabase
@@ -22,7 +23,7 @@ export async function GET(
         team:teams(id, name),
         tasks:tasks(count)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (error) {
@@ -40,9 +41,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const json = await request.json()
     const updates = updateProjectSchema.parse(json)
 
@@ -51,7 +53,7 @@ export async function PUT(
     const { data: project, error } = await supabase
       .from('projects')
       .update(updates)
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single()
 
@@ -63,7 +65,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: error.errors[0].message },
+        { error: error.issues[0].message },
         { status: 400 }
       )
     }
@@ -76,16 +78,17 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await createClient()
 
     // Check if project has tasks
     const { count } = await supabase
       .from('tasks')
       .select('*', { count: 'exact', head: true })
-      .eq('project_id', params.id)
+      .eq('project_id', id)
 
     if (count && count > 0) {
       return NextResponse.json(
@@ -97,7 +100,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('projects')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })

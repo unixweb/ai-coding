@@ -40,17 +40,21 @@ export async function GET() {
       .in('team_id', teamIds)
       .eq('status', 'active')
 
-    // Get all tasks
-    const { data: allTasks } = await supabase
-      .from('tasks')
-      .select('status, due_date')
-      .in(
-        'project_id',
-        supabase
-          .from('projects')
-          .select('id')
-          .in('team_id', teamIds)
-      )
+    // Get project IDs first
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('id')
+      .in('team_id', teamIds)
+
+    const projectIds = projects?.map((p) => p.id) || []
+
+    // Get all tasks for these projects
+    const { data: allTasks } = projectIds.length > 0
+      ? await supabase
+          .from('tasks')
+          .select('status, due_date')
+          .in('project_id', projectIds)
+      : { data: [] }
 
     const total_tasks = allTasks?.length || 0
 
