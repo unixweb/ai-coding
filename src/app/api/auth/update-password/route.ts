@@ -1,15 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const updatePasswordSchema = z.object({
   password: z.string().min(8, 'Passwort muss mindestens 8 Zeichen lang sein'),
 })
 
 export async function POST(request: Request) {
+  // Rate limiting: 5 password update attempts per hour
+  const rateLimitResponse = checkRateLimit(request, { limit: 5, window: 3600 })
+  if (rateLimitResponse) {
+    return rateLimitResponse
+  }
+
   try {
     const json = await request.json()
-    const { password } = updatePasswordSchema.parse(json)
+    const { password} = updatePasswordSchema.parse(json)
 
     const supabase = await createClient()
 

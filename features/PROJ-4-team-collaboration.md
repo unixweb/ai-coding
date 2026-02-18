@@ -1,8 +1,8 @@
 # PROJ-4: Team-Zusammenarbeit
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-02-15
-**Last Updated:** 2026-02-15
+**Last Updated:** 2026-02-18
 
 ## Dependencies
 - **Requires:** PROJ-1 (Benutzer-Authentifizierung) - Nur eingeloggte Benutzer können Teams verwalten
@@ -223,7 +223,153 @@ Alle bereits vorhanden:
 - shadcn/ui: Card, Button, Dialog, Select, Badge, Avatar, Toast
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-02-18
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+
+### Acceptance Criteria Status
+
+#### AC-1: Admin kann Teammitglieder per E-Mail-Adresse einladen
+- [x] Invite dialog exists on /team page with email input and role select
+- [x] POST /api/teams/invitations validates with Zod and creates invitation
+- [ ] BUG: The invite dialog does NOT include a team_id in the request body (team/page.tsx line 98). The API requires team_id (Zod schema) but the frontend sends only { email, role } without team_id. This will cause a 400 validation error.
+
+#### AC-2: Einladungs-E-Mail enthaelt einen Link zum Akzeptieren der Einladung
+- [ ] BUG: Invitation emails are NOT sent. The API has a TODO comment (line 104 of invitations/route.ts): "TODO: Send invitation email via Supabase". No email sending is implemented.
+
+#### AC-3: Eingeladene Person erhaelt Zugriff auf alle Projekte des Teams
+- [x] Accept invitation API adds user to team_members with the invitation's role
+- [x] RLS policies grant project access based on team membership
+
+#### AC-4: Admin kann Rollen zuweisen: Admin, Member, Viewer
+- [x] Role change dialog with select dropdown (Admin, Member, Viewer)
+- [x] PUT /api/teams/members/[id] validates role enum
+- [x] Last admin protection: API prevents changing the last admin's role
+
+#### AC-5: Benutzer sieht eine Liste aller Teammitglieder mit Name, E-Mail und Rolle
+- [x] Team page lists members with Avatar, Name, Email, Role badge
+- [ ] BUG: The GET /api/teams/members requires a team_id query parameter, but the frontend calls /api/teams/members WITHOUT team_id (team/page.tsx line 73). This will return a 400 error "Team-ID ist erforderlich".
+
+#### AC-6: Admin kann Teammitglieder aus dem Team entfernen (mit Bestaetigungsmeldung)
+- [x] Remove member dialog with destructive "Entfernen" button
+- [x] API DELETE prevents self-removal and last admin removal
+- [x] Dialog description warns about lost access
+
+#### AC-7: Beim Entfernen werden alle Zuweisungen des Mitglieds auf "Nicht zugewiesen" gesetzt
+- [ ] BUG: The DELETE /api/teams/members/[id] route does NOT update task assignments (assigned_to) to NULL when a member is removed. The database uses ON DELETE CASCADE on team_members, but the tasks.assigned_to references auth.users (not team_members) with ON DELETE SET NULL. This means assignments only get nulled if the USER is deleted from auth, not when they are removed from a TEAM. Team removal does not trigger SET NULL on task assignments.
+
+#### AC-8: Einladungen sind 7 Tage gueltig
+- [x] Database: expires_at defaults to NOW() + INTERVAL '7 days'
+- [x] Accept API checks expiry: new Date(invitation.expires_at) < new Date()
+- [x] Expired invitations get status updated to 'expired'
+
+#### AC-9: Benutzer kann ausstehende Einladungen sehen und zurueckziehen
+- [x] Pending invitations section shown on team page
+- [x] "Zurueckziehen" button on each invitation card
+- [x] DELETE /api/teams/invitations/[id] removes invitation
+- [ ] BUG: GET /api/teams/invitations also requires team_id query parameter but frontend calls without it (team/page.tsx line 74), same issue as AC-5.
+
+#### AC-10: Der erste Benutzer, der ein Konto erstellt, wird automatisch Admin
+- [x] Database trigger create_default_team_for_user() creates a team and adds user as admin on signup
+- [x] This is handled at the database level via trigger
+
+### Edge Cases Status
+
+#### EC-1: Already registered email invited
+- [x] API checks for existing team member, but...
+- [ ] BUG: The existing member check on line 62 of invitations/route.ts checks user_id = CURRENT USER's id, not the invited email's user_id. It should look up the user by email and check if that user is already a member. Currently it checks if the INVITER is a member, which will always be true.
+
+#### EC-2: Expired invitation
+- [x] Accept API checks expiry and returns "Diese Einladung ist abgelaufen"
+
+#### EC-3: Admin tries to remove self
+- [x] API returns "Sie koennen sich nicht selbst entfernen"
+
+#### EC-4: Last admin removal
+- [x] API returns "Es muss mindestens ein Admin im Team sein"
+
+#### EC-5: Viewer tries to create project
+- [x] RLS policy restricts INSERT to admin and member roles
+
+#### EC-6: Email invited multiple times
+- [x] API checks for existing pending invitation with same email+team_id
+
+### Security Audit Results
+- [x] Authentication: Team invitation accept requires logged-in user
+- [ ] BUG: Invitation DELETE at /api/teams/invitations/[id] checks auth but does NOT verify that the current user is an ADMIN of the team that owns the invitation. Any authenticated user could delete any invitation by ID if they know or guess the UUID.
+- [ ] BUG: The GET /api/teams/members and GET /api/teams/invitations routes do not explicitly verify the requesting user is a member/admin of the team being queried. They pass team_id as a query param and rely solely on RLS. An attacker could enumerate team data by trying different team_ids.
+- [x] Token-based invitations use UUID, single-use
+- [x] Invitation status checked (must be 'pending' to accept)
+- [ ] BUG: The accept-invitation page does NOT validate the token server-side before rendering. It always shows "valid" (line 33: setValid(true)) regardless of token validity. Real validation only happens when the user clicks "Accept".
+
+### Bugs Found
+
+#### BUG-23: Missing team_id in invitation request
+- **Severity:** Critical
+- **Steps to Reproduce:**
+  1. Go to /team
+  2. Click "Mitglied einladen"
+  3. Fill email and role, click send
+  4. Expected: Invitation created
+  5. Actual: 400 error because team_id is not included in the request body
+- **Priority:** Fix before deployment
+
+#### BUG-24: No invitation email sent
+- **Severity:** Critical
+- **Steps to Reproduce:**
+  1. Create an invitation via API
+  2. Expected: Invited user receives email with accept link
+  3. Actual: No email sent (TODO in code)
+- **Priority:** Fix before deployment
+
+#### BUG-25: Missing team_id in team members and invitations GET requests
+- **Severity:** Critical
+- **Steps to Reproduce:**
+  1. Go to /team page
+  2. Expected: Team members and invitations loaded
+  3. Actual: 400 errors because team_id query parameter is not provided
+- **Priority:** Fix before deployment
+
+#### BUG-26: Task assignments not nulled when member removed from team
+- **Severity:** High
+- **Steps to Reproduce:**
+  1. Assign tasks to a team member
+  2. Remove that member from the team
+  3. Expected: Their task assignments become "Nicht zugewiesen"
+  4. Actual: Tasks remain assigned to the removed user's ID
+- **Priority:** Fix before deployment
+
+#### BUG-27: Wrong field checked for duplicate member detection
+- **Severity:** High
+- **Steps to Reproduce:**
+  1. Invite a user who is already a team member
+  2. Expected: "Dieser Benutzer ist bereits Mitglied des Teams"
+  3. Actual: Check compares inviter's user_id instead of invited user's email/user_id
+- **Priority:** Fix before deployment
+
+#### BUG-28: Invitation delete lacks admin authorization check
+- **Severity:** High
+- **Steps to Reproduce:**
+  1. As a non-admin user, send DELETE /api/teams/invitations/{id}
+  2. Expected: 403 Forbidden
+  3. Actual: Invitation deleted if user is authenticated (any role)
+- **Priority:** Fix before deployment
+
+#### BUG-29: Accept-invitation page shows valid state without server validation
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Visit /accept-invitation?token=any-random-uuid
+  2. Expected: Token validated server-side, invalid/expired tokens show error
+  3. Actual: Page always shows "valid" invitation with hardcoded team name "Ihr Team"
+- **Priority:** Fix before deployment
+
+### Summary
+- **Acceptance Criteria:** 4/10 passed
+- **Bugs Found:** 7 total (3 critical, 3 high, 1 medium)
+- **Security:** Issues found (missing authorization on invitation delete, missing team_id validation)
+- **Production Ready:** NO
+- **Recommendation:** The team management feature has serious integration issues. The frontend is not properly connected to the API (missing team_id parameters, no email sending). Fix critical bugs first.
 
 ## Deployment
 _To be added by /deploy_

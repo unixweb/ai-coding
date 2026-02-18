@@ -1,8 +1,8 @@
 # PROJ-5: Fortschritts-Dashboard
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-02-15
-**Last Updated:** 2026-02-15
+**Last Updated:** 2026-02-18
 
 ## Dependencies
 - **Requires:** PROJ-2 (Projekt-Verwaltung) - Benötigt Projektdaten
@@ -207,7 +207,144 @@ Alle bereits vorhanden:
 - `recharts` - für detaillierte Charts (nicht im MVP)
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-02-18
+**App URL:** http://localhost:3000
+**Tester:** QA Engineer (AI)
+
+### Acceptance Criteria Status
+
+#### AC-1: Dashboard zeigt Gesamtanzahl der Projekte (Active)
+- [x] Stats card "Aktive Projekte" displays total_projects
+- [x] API GET /api/dashboard/stats counts projects with status='active'
+
+#### AC-2: Dashboard zeigt Gesamtanzahl der Tasks (To Do, In Progress, Completed)
+- [x] "Task Status" card shows breakdown by status with badges
+- [x] API calculates tasks_by_status with all three categories
+
+#### AC-3: Dashboard zeigt Abschlussrate aller Tasks in Prozent
+- [x] "Abschlussrate" card shows percentage with Progress bar
+- [x] API calculates completion_rate = (completed / total) * 100
+- [x] Shows "X von Y erledigt" text
+
+#### AC-4: Dashboard zeigt Liste der ueberfaelligen Tasks
+- [x] "Ueberfaellig" card shows count with destructive styling when > 0
+- [x] API calculates overdue_tasks (due_date < today AND status != completed)
+- [ ] BUG: Dashboard does NOT show a LIST of overdue tasks. It only shows the count. The spec requires "Liste der ueberfaelligen Tasks" but only a number is displayed. There is no task list anywhere on the dashboard.
+
+#### AC-5: Benutzer kann Tasks nach Status filtern
+- [ ] BUG: Dashboard has NO task filter functionality. There are no filter buttons, dropdowns, or filtered task list on the dashboard page. The spec requires status/person/date filters but the dashboard only shows statistics cards and project progress.
+
+#### AC-6: Benutzer kann Tasks nach Zustaendiger Person filtern
+- [ ] BUG: No person filter on dashboard (same as AC-5)
+
+#### AC-7: Benutzer kann Tasks nach Faelligkeitsdatum filtern
+- [ ] BUG: No due date filter on dashboard (same as AC-5)
+
+#### AC-8: Dashboard zeigt Fortschrittsbalken pro Projekt
+- [x] Project progress section with Progress bar per project
+- [x] Shows "X von Y Tasks erledigt" with percentage
+- [x] Click on project navigates to project detail page
+- [x] Projects sorted by progress (least progress first)
+
+#### AC-9: Filter koennen kombiniert werden
+- [ ] BUG: No filters exist on dashboard (same as AC-5)
+
+#### AC-10: Dashboard laedt beim Oeffnen der App als Startseite
+- [ ] BUG: The root path '/' shows a landing/welcome page, NOT the dashboard. After login, user is redirected to '/dashboard' which is correct. But the spec says "Dashboard laedt beim Oeffnen der App als Startseite" -- the dashboard is at /dashboard, not /. If a logged-in user visits '/', they see the landing page instead of being redirected to the dashboard.
+
+### Edge Cases Status
+
+#### EC-1: No projects or tasks (empty state)
+- [x] Dashboard shows "Noch keine Projekte" empty state with "Erstes Projekt erstellen" button
+- [x] API returns zeros for all stats when no teams/projects exist
+
+#### EC-2: All tasks completed (100%)
+- [x] Completion rate card would show 100%
+- [ ] BUG: No special "success" message or visual indicator at 100% as specified. Spec says "Dashboard zeigt '100% abgeschlossen' mit Erfolgsmeldung" but no Erfolgsmeldung exists.
+
+#### EC-3: Filter returns no results
+- [ ] BUG: Cannot test -- no filters exist on dashboard
+
+#### EC-4: Project with no tasks
+- [x] Project progress section shows "Ihre Projekte haben noch keine Tasks" when projects exist but have no tasks
+
+#### EC-5: > 50 overdue tasks (pagination)
+- [ ] BUG: No overdue tasks list or pagination exists. Only count shown.
+
+#### EC-6: Removed team member
+- [x] API only counts tasks for teams the user belongs to
+
+### Security Audit Results
+- [x] Both dashboard API routes check authentication (supabase.auth.getUser())
+- [x] Data scoped to user's teams only via team membership lookup
+- [ ] BUG: Dashboard stats API fetches ALL tasks for ALL projects in user's teams into memory (line 52-57 of stats/route.ts). For users with thousands of tasks, this is a performance/DoS vector. Should use database-level COUNT/aggregation instead of client-side array filtering.
+- [x] No sensitive data exposed in API responses
+
+### Bugs Found
+
+#### BUG-30: No overdue tasks LIST on dashboard
+- **Severity:** High
+- **Steps to Reproduce:**
+  1. Navigate to /dashboard
+  2. Expected: List of overdue tasks with details
+  3. Actual: Only a count number in a card
+- **Priority:** Fix before deployment
+
+#### BUG-31: No task filters on dashboard
+- **Severity:** Critical
+- **Steps to Reproduce:**
+  1. Navigate to /dashboard
+  2. Expected: Filter toolbar with status, person, due date filters and filtered task list
+  3. Actual: No filters or task list exist. Dashboard only shows summary cards.
+- **Priority:** Fix before deployment
+
+#### BUG-32: Logged-in users see landing page at root URL
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Log in successfully
+  2. Navigate to '/' directly
+  3. Expected: Redirected to /dashboard or dashboard shown
+  4. Actual: Landing page with "Jetzt registrieren" and "Anmelden" buttons
+- **Priority:** Fix before deployment
+
+#### BUG-33: No 100% completion celebration/message
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Complete all tasks in all projects
+  2. Expected: Special "100% abgeschlossen" message or celebration
+  3. Actual: Just shows 100% number like any other percentage
+- **Priority:** Nice to have
+
+#### BUG-34: Dashboard stats loaded into memory instead of aggregated in DB
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Have a user with 10,000+ tasks
+  2. Load /api/dashboard/stats
+  3. Expected: Database-level COUNT/aggregation
+  4. Actual: All tasks fetched into memory and counted with JavaScript array.filter()
+- **Priority:** Fix before deployment
+
+#### BUG-35: No auto-refresh (30s) on dashboard
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Open /dashboard
+  2. Wait 30+ seconds
+  3. Expected: Data auto-refreshes as specified in tech requirements (caching/refresh every 30s)
+  4. Actual: No auto-refresh implemented. Data only loaded once on mount.
+- **Priority:** Fix in next sprint
+
+### Cross-Browser / Responsive Notes
+- [x] Stats grid uses responsive columns (md:grid-cols-2 lg:grid-cols-4)
+- [x] Project progress section uses standard card layout, works at all widths
+- [x] Dashboard header text scales appropriately
+
+### Summary
+- **Acceptance Criteria:** 4/10 passed
+- **Bugs Found:** 6 total (1 critical, 1 high, 2 medium, 2 low)
+- **Security:** Minor performance concern with in-memory aggregation
+- **Production Ready:** NO
+- **Recommendation:** The dashboard shows summary stats and project progress well, but is missing the complete task list and filter system that is core to the feature. The filter toolbar + filtered task list section needs to be implemented.
 
 ## Deployment
 _To be added by /deploy_

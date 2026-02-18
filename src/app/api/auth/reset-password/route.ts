@@ -1,12 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const resetSchema = z.object({
   email: z.string().email('Ungültige E-Mail-Adresse'),
 })
 
 export async function POST(request: Request) {
+  // Rate limiting: 3 password reset attempts per hour
+  const rateLimitResponse = checkRateLimit(request, { limit: 3, window: 3600 })
+  if (rateLimitResponse) {
+    return rateLimitResponse
+  }
+
   try {
     const json = await request.json()
     const { email } = resetSchema.parse(json)

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const signupSchema = z.object({
   email: z.string().email('Ungültige E-Mail-Adresse'),
@@ -9,6 +10,12 @@ const signupSchema = z.object({
 })
 
 export async function POST(request: Request) {
+  // Rate limiting: 3 signup attempts per hour
+  const rateLimitResponse = checkRateLimit(request, { limit: 3, window: 3600 })
+  if (rateLimitResponse) {
+    return rateLimitResponse
+  }
+
   try {
     const json = await request.json()
     const { email, password, name } = signupSchema.parse(json)
