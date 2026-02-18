@@ -12,6 +12,7 @@ export async function GET() {
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.error('Auth error:', authError)
       return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 })
     }
 
@@ -22,30 +23,38 @@ export async function GET() {
       .single()
 
     // If no profile exists, create one automatically
-    if (profileError && profileError.code === 'PGRST116') {
-      const { data: newProfile, error: createError } = await supabase
-        .from('profiles')
-        .insert({
-          id: user.id,
-          name: user.email?.split('@')[0] || 'User',
-          email: user.email,
-        })
-        .select()
-        .single()
+    if (profileError) {
+      console.log('Profile error:', profileError.code, profileError.message, profileError.details)
 
-      if (createError) {
-        return NextResponse.json({ error: createError.message }, { status: 400 })
+      // PGRST116 = "not found" in PostgREST
+      if (profileError.code === 'PGRST116') {
+        console.log('Creating new profile for user:', user.id)
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            name: user.email?.split('@')[0] || 'User',
+            email: user.email,
+          })
+          .select()
+          .single()
+
+        if (createError) {
+          console.error('Create profile error:', createError)
+          return NextResponse.json({ error: createError.message }, { status: 400 })
+        }
+
+        console.log('Profile created successfully')
+        return NextResponse.json({ profile: newProfile, user })
       }
 
-      return NextResponse.json({ profile: newProfile, user })
-    }
-
-    if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 400 })
+      // Other profile errors
+      return NextResponse.json({ error: profileError.message, code: profileError.code }, { status: 400 })
     }
 
     return NextResponse.json({ profile, user })
   } catch (error) {
+    console.error('Unexpected error:', error)
     return NextResponse.json(
       { error: 'Ein Fehler ist aufgetreten' },
       { status: 500 }
