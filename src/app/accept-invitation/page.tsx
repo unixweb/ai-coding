@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 
+// Force dynamic rendering because we use searchParams
+export const dynamic = 'force-dynamic'
+
 export default function AcceptInvitationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
