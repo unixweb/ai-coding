@@ -10,9 +10,6 @@ const createProjectSchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status') || 'active'
-
     const supabase = await createClient()
 
     const { data: projects, error } = await supabase
@@ -22,7 +19,6 @@ export async function GET(request: Request) {
         team:teams(id, name),
         tasks:tasks(count)
       `)
-      .eq('status', status)
       .order('created_at', { ascending: false })
 
     if (error) {
