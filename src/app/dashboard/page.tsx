@@ -1,14 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Plus, FolderOpen, CheckCircle2, Clock, AlertTriangle, TrendingUp } from 'lucide-react'
+import { Plus, FolderOpen, CheckCircle2, Clock, AlertTriangle, TrendingUp, Filter, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
+import { TASK_STATUS_LABELS, TASK_STATUS_COLORS } from '@/lib/types/task'
+import { format } from 'date-fns'
+import { de } from 'date-fns/locale'
 
 interface DashboardStats {
   total_projects: number
@@ -30,10 +40,38 @@ interface ProjectProgress {
   completion_rate: number
 }
 
+interface Task {
+  id: string
+  project_id: string
+  project_name?: string
+  title: string
+  description: string
+  status: 'to_do' | 'in_progress' | 'completed'
+  assigned_to: string | null
+  due_date: string | null
+  created_at: string
+}
+
+interface TeamMember {
+  id: string
+  user_id: string
+  name: string
+}
+
+type FilterStatus = 'all' | 'to_do' | 'in_progress' | 'completed'
+type FilterDueDate = 'all' | 'today' | 'this_week' | 'overdue'
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [projects, setProjects] = useState<ProjectProgress[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('all')
+  const [dueDateFilter, setDueDateFilter] = useState<FilterDueDate>('all')
 
   useEffect(() => {
     loadDashboard()
@@ -41,9 +79,11 @@ export default function DashboardPage() {
 
   const loadDashboard = async () => {
     try {
-      const [statsRes, progressRes] = await Promise.all([
+      const [statsRes, progressRes, tasksRes, membersRes] = await Promise.all([
         fetch('/api/dashboard/stats'),
         fetch('/api/dashboard/project-progress'),
+        fetch('/api/tasks'),
+        fetch('/api/teams/members'),
       ])
 
       if (!statsRes.ok || !progressRes.ok) {
@@ -53,14 +93,67 @@ export default function DashboardPage() {
 
       const statsData = await statsRes.json()
       const progressData = await progressRes.json()
+      const tasksData = tasksRes.ok ? await tasksRes.json() : { tasks: [] }
+      const membersData = membersRes.ok ? await membersRes.json() : { members: [] }
 
       setStats(statsData.stats)
       setProjects(progressData.projects || [])
+      setTasks(tasksData.tasks || [])
+      setTeamMembers(membersData.members || [])
     } catch (error) {
       toast.error('Ein Fehler ist aufgetreten')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Filter tasks
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      // Status filter
+      if (statusFilter !== 'all' && task.status !== statusFilter) {
+        return false
+      }
+
+      // Assignee filter
+      if (assigneeFilter !== 'all' && task.assigned_to !== assigneeFilter) {
+        return false
+      }
+
+      // Due date filter
+      if (dueDateFilter !== 'all') {
+        if (!task.due_date) return false
+        const dueDate = new Date(task.due_date)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        switch (dueDateFilter) {
+          case 'today':
+            const tomorrow = new Date(today)
+            tomorrow.setDate(tomorrow.getDate() + 1)
+            if (dueDate < today || dueDate >= tomorrow) return false
+            break
+          case 'this_week':
+            const weekEnd = new Date(today)
+            weekEnd.setDate(weekEnd.getDate() + 7)
+            if (dueDate < today || dueDate >= weekEnd) return false
+            break
+          case 'overdue':
+            if (dueDate >= today || task.status === 'completed') return false
+            break
+        }
+      }
+
+      return true
+    })
+  }, [tasks, statusFilter, assigneeFilter, dueDateFilter])
+
+  const hasActiveFilters = statusFilter !== 'all' || assigneeFilter !== 'all' || dueDateFilter !== 'all'
+
+  const clearFilters = () => {
+    setStatusFilter('all')
+    setAssigneeFilter('all')
+    setDueDateFilter('all')
   }
 
   if (loading) {
@@ -237,6 +330,134 @@ export default function DashboardPage() {
                 Erstes Projekt erstellen
               </Link>
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Task Filters and List */}
+      {hasTasks && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Meine Tasks</CardTitle>
+                <CardDescription>
+                  {filteredTasks.length} {filteredTasks.length === 1 ? 'Task' : 'Tasks'}
+                  {hasActiveFilters && ' (gefiltert)'}
+                </CardDescription>
+              </div>
+              {hasActiveFilters && (
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  <X className="mr-2 h-4 w-4" />
+                  Filter zurücksetzen
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2">
+              <Select value={statusFilter} onValueChange={(v: FilterStatus) => setStatusFilter(v)}>
+                <SelectTrigger className="w-[180px]">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Status</SelectItem>
+                  <SelectItem value="to_do">To Do</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Zuständig" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Personen</SelectItem>
+                  {teamMembers.map((member) => (
+                    <SelectItem key={member.user_id} value={member.user_id}>
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={dueDateFilter} onValueChange={(v: FilterDueDate) => setDueDateFilter(v)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Fälligkeit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Termine</SelectItem>
+                  <SelectItem value="today">Heute</SelectItem>
+                  <SelectItem value="this_week">Diese Woche</SelectItem>
+                  <SelectItem value="overdue">Überfällig</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Task List */}
+            <div className="space-y-2">
+              {filteredTasks.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    {hasActiveFilters
+                      ? 'Keine Tasks gefunden. Passen Sie die Filter an.'
+                      : 'Noch keine Tasks vorhanden.'}
+                  </p>
+                </div>
+              ) : (
+                filteredTasks.slice(0, 10).map((task) => (
+                  <Link
+                    key={task.id}
+                    href={`/projects/${task.project_id}`}
+                    className="block rounded-lg border p-4 transition-colors hover:bg-accent"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{task.title}</h4>
+                          <Badge className={TASK_STATUS_COLORS[task.status]}>
+                            {TASK_STATUS_LABELS[task.status]}
+                          </Badge>
+                        </div>
+                        {task.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-1">
+                            {task.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          {task.project_name && (
+                            <span className="flex items-center gap-1">
+                              <FolderOpen className="h-3 w-3" />
+                              {task.project_name}
+                            </span>
+                          )}
+                          {task.due_date && (
+                            <span className={`flex items-center gap-1 ${
+                              new Date(task.due_date) < new Date() && task.status !== 'completed'
+                                ? 'text-destructive font-medium'
+                                : ''
+                            }`}>
+                              <Clock className="h-3 w-3" />
+                              {format(new Date(task.due_date), 'dd. MMM yyyy', { locale: de })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
+              {filteredTasks.length > 10 && (
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">
+                    ... und {filteredTasks.length - 10} weitere Tasks
+                  </p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
