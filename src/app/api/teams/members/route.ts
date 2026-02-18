@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const supabase = await createClient()
 
     const { data: members, error } = await supabase
-      .from('team_members')
+      .schema('taskmanager').from('team_members')
       .select(`
         *,
         user:profiles!user_id(id, name, email)

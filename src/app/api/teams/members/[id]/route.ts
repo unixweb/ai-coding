@@ -19,14 +19,14 @@ export async function PUT(
 
     // Check if this would remove the last admin
     const { data: member } = await supabase
-      .from('team_members')
+      .schema('taskmanager').from('team_members')
       .select('team_id, role')
       .eq('id', id)
       .single()
 
     if (member && member.role === 'admin' && role !== 'admin') {
       const { count } = await supabase
-        .from('team_members')
+        .schema('taskmanager').from('team_members')
         .select('*', { count: 'exact', head: true })
         .eq('team_id', member.team_id)
         .eq('role', 'admin')
@@ -40,7 +40,7 @@ export async function PUT(
     }
 
     const { data: updatedMember, error } = await supabase
-      .from('team_members')
+      .schema('taskmanager').from('team_members')
       .update({ role })
       .eq('id', id)
       .select()
@@ -83,7 +83,7 @@ export async function DELETE(
 
     // Get member details
     const { data: member } = await supabase
-      .from('team_members')
+      .schema('taskmanager').from('team_members')
       .select('team_id, user_id, role')
       .eq('id', id)
       .single()
@@ -103,7 +103,7 @@ export async function DELETE(
     // Check if this is the last admin
     if (member.role === 'admin') {
       const { count } = await supabase
-        .from('team_members')
+        .schema('taskmanager').from('team_members')
         .select('*', { count: 'exact', head: true })
         .eq('team_id', member.team_id)
         .eq('role', 'admin')
@@ -117,7 +117,7 @@ export async function DELETE(
     }
 
     const { error } = await supabase
-      .from('team_members')
+      .schema('taskmanager').from('team_members')
       .delete()
       .eq('id', id)
 

@@ -15,7 +15,7 @@ export async function GET() {
 
     // Get user's teams
     const { data: teamMembers } = await supabase
-      .from('team_members')
+      .schema('taskmanager').from('team_members')
       .select('team_id')
       .eq('user_id', user.id)
 
@@ -27,7 +27,7 @@ export async function GET() {
 
     // Get all active projects with task counts
     const { data: projects } = await supabase
-      .from('projects')
+      .schema('taskmanager').from('projects')
       .select(`
         id,
         name,
