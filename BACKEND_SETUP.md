@@ -25,19 +25,24 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=dein-anon-key
 
 ### 2. SQL Migrations ausführen
 
-Die SQL-Migrations befinden sich in `supabase/migrations/`. Führe sie in dieser Reihenfolge aus:
+Die SQL-Migrations befinden sich in `supabase/migrations/`. **Führe sie in dieser Reihenfolge aus:**
 
 1. Gehe zu deinem Supabase Dashboard
 2. Navigiere zu **SQL Editor**
 3. Erstelle eine neue Query
-4. Kopiere den Inhalt von **001_create_teams.sql** und führe ihn aus
-5. Wiederhole das für **002_create_profiles.sql**, **003_create_projects.sql**, **004_create_tasks.sql**
+4. Kopiere den Inhalt von **000_create_schema.sql** und führe ihn aus (**WICHTIG: Zuerst!**)
+5. Dann kopiere den Inhalt von **001_create_teams.sql** und führe ihn aus
+6. Wiederhole das für **002_create_profiles.sql**, **003_create_projects.sql**, **004_create_tasks.sql**
 
 **Migrations:**
+- `000_create_schema.sql` - **Erstellt das `taskmanager` Schema (ZUERST ausführen!)**
 - `001_create_teams.sql` - Teams, Team Members, Invitations (mit RLS)
 - `002_create_profiles.sql` - User Profiles (mit RLS)
 - `003_create_projects.sql` - Projects (team-basiert, mit RLS)
 - `004_create_tasks.sql` - Tasks (mit Foreign Keys, mit RLS)
+
+**⚠️ Schema-basierte Architektur:**
+Alle Tabellen werden im `taskmanager` Schema angelegt, **nicht** im `public` Schema. Das ermöglicht mehrere Projekte in einer Supabase-Datenbank (Free Tier).
 
 ### 3. E-Mail-Authentifizierung konfigurieren
 
