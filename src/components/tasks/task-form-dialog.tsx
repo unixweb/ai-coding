@@ -48,7 +48,7 @@ const taskFormSchema = z.object({
     .max(200, "Task-Titel darf maximal 200 Zeichen lang sein"),
   description: z.string(),
   assigned_to: z.string(),
-  status: z.enum(["todo", "in_progress", "completed"]),
+  status: z.enum(["to_do", "in_progress", "completed"]),
   due_date: z.string(),
 });
 
@@ -77,7 +77,7 @@ export function TaskFormDialog({
       title: "",
       description: "",
       assigned_to: "",
-      status: "todo",
+      status: "to_do",
       due_date: "",
     },
   });
@@ -100,7 +100,7 @@ export function TaskFormDialog({
           title: "",
           description: "",
           assigned_to: "",
-          status: "todo",
+          status: "to_do",
           due_date: "",
         });
       }
@@ -125,7 +125,7 @@ export function TaskFormDialog({
     onOpenChange(false);
   };
 
-  const statusOptions: TaskStatus[] = ["todo", "in_progress", "completed"];
+  const statusOptions: TaskStatus[] = ["to_do", "in_progress", "completed"];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

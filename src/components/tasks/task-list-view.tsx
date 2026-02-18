@@ -119,7 +119,7 @@ export function TaskListView({
   const [sortField, setSortField] = useState<SortField>("due_date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const statusOptions: TaskStatus[] = ["todo", "in_progress", "completed"];
+  const statusOptions: TaskStatus[] = ["to_do", "in_progress", "completed"];
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -140,7 +140,7 @@ export function TaskListView({
           break;
         case "status": {
           const statusOrder: Record<TaskStatus, number> = {
-            todo: 0,
+            to_do: 0,
             in_progress: 1,
             completed: 2,
           };

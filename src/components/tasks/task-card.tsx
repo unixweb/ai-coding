@@ -90,7 +90,7 @@ export function TaskCard({
       }
     : undefined;
 
-  const statusOptions: TaskStatus[] = ["todo", "in_progress", "completed"];
+  const statusOptions: TaskStatus[] = ["to_do", "in_progress", "completed"];
 
   return (
     <Card

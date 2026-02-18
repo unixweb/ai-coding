@@ -54,7 +54,7 @@ function isOverdue(dueDate: string | null): boolean {
   return isBefore(new Date(dueDate), startOfDay(new Date()));
 }
 
-const statusOptions: TaskStatus[] = ["todo", "in_progress", "completed"];
+const statusOptions: TaskStatus[] = ["to_do", "in_progress", "completed"];
 
 export function TaskDetailsSheet({
   open,

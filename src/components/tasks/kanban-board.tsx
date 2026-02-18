@@ -34,16 +34,16 @@ interface KanbanBoardProps {
   onStatusChange: (taskId: string, status: TaskStatus) => void;
 }
 
-const COLUMNS: TaskStatus[] = ["todo", "in_progress", "completed"];
+const COLUMNS: TaskStatus[] = ["to_do", "in_progress", "completed"];
 
 const COLUMN_STYLES: Record<TaskStatus, string> = {
-  todo: "border-muted-foreground/20",
+  to_do: "border-muted-foreground/20",
   in_progress: "border-blue-500/30",
   completed: "border-green-500/30",
 };
 
 const COLUMN_DOT_STYLES: Record<TaskStatus, string> = {
-  todo: "bg-muted-foreground",
+  to_do: "bg-muted-foreground",
   in_progress: "bg-blue-500",
   completed: "bg-green-500",
 };
