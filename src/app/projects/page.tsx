@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useProjects } from "@/hooks/use-tasks";
+import { useProjects } from "@/hooks/use-projects";
 
 export default function ProjectsPage() {
   const { projects, isLoading } = useProjects();

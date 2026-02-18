@@ -1,0 +1,49 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+
+export interface TeamMember {
+  id: string
+  user_id: string
+  name: string
+  email: string
+  role: 'admin' | 'member' | 'viewer'
+  created_at: string
+}
+
+export function useTeamMembers() {
+  const [members, setMembers] = useState<TeamMember[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadMembers = useCallback(async () => {
+    try {
+      setIsLoading(true)
+      const res = await fetch('/api/teams/members')
+
+      if (!res.ok) {
+        throw new Error('Fehler beim Laden der Teammitglieder')
+      }
+
+      const data = await res.json()
+      setMembers(data.members || [])
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten')
+      setMembers([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadMembers()
+  }, [loadMembers])
+
+  return {
+    members,
+    isLoading,
+    error,
+    refetch: loadMembers,
+  }
+}

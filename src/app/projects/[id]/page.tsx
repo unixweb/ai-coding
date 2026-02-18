@@ -17,7 +17,9 @@ import {
   TaskToolbar,
   TaskEmptyState,
 } from "@/components/tasks";
-import { useTasks, useTeamMembers, useProject, filterTasks } from "@/hooks/use-tasks";
+import { useTasks, filterTasks } from "@/hooks/use-tasks-api";
+import { useProject } from "@/hooks/use-projects";
+import { useTeamMembers } from "@/hooks/use-team";
 import {
   Task,
   TaskStatus,

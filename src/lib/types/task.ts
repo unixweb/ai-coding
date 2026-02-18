@@ -1,4 +1,4 @@
-export type TaskStatus = "todo" | "in_progress" | "completed";
+export type TaskStatus = "to_do" | "in_progress" | "completed";
 
 export interface Task {
   id: string;
@@ -47,13 +47,13 @@ export interface TaskFilters {
 export type ViewMode = "kanban" | "list";
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: "To Do",
+  to_do: "To Do",
   in_progress: "In Progress",
   completed: "Completed",
 };
 
 export const TASK_STATUS_COLORS: Record<TaskStatus, string> = {
-  todo: "bg-muted text-muted-foreground",
+  to_do: "bg-muted text-muted-foreground",
   in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
   completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
 };
