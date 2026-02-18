@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowRight, FolderOpen, Plus, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { ArrowRight, FolderOpen, Plus, MoreVertical, Pencil, Trash2, Archive, ArchiveRestore, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,11 +36,17 @@ import { ProjectDialog } from "@/components/project-dialog";
 import { toast } from "sonner";
 
 export default function ProjectsPage() {
-  const { projects, isLoading, refetch, deleteProject } = useProjects();
+  const { projects, isLoading, refetch, deleteProject, updateProject } = useProjects();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'active' | 'archived'>('active');
+
+  // Filter projects by status
+  const filteredProjects = useMemo(() => {
+    return projects.filter(p => p.status === statusFilter);
+  }, [projects, statusFilter]);
 
   const handleEdit = (project: Project, e: React.MouseEvent) => {
     e.preventDefault();
@@ -52,6 +58,17 @@ export default function ProjectsPage() {
     e.preventDefault();
     setSelectedProject(project);
     setDeleteDialogOpen(true);
+  };
+
+  const handleArchive = async (project: Project, e: React.MouseEvent) => {
+    e.preventDefault();
+    const newStatus = project.status === 'active' ? 'archived' : 'active';
+    try {
+      await updateProject(project.id, { status: newStatus });
+      toast.success(newStatus === 'archived' ? 'Projekt archiviert!' : 'Projekt reaktiviert!');
+    } catch (error) {
+      toast.error('Fehler beim Aktualisieren');
+    }
   };
 
   const confirmDelete = async () => {
@@ -70,6 +87,10 @@ export default function ProjectsPage() {
     }
   };
 
+  const getTaskCount = (project: Project) => {
+    return project.tasks?.[0]?.count ?? 0;
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
       <div className="flex items-center justify-between">
@@ -83,6 +104,30 @@ export default function ProjectsPage() {
           <Plus className="mr-2 h-4 w-4" />
           Neues Projekt
         </Button>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex gap-2 border-b">
+        <button
+          onClick={() => setStatusFilter('active')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            statusFilter === 'active'
+              ? 'border-b-2 border-primary text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Aktive Projekte
+        </button>
+        <button
+          onClick={() => setStatusFilter('archived')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            statusFilter === 'archived'
+              ? 'border-b-2 border-primary text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Archivierte Projekte
+        </button>
       </div>
 
       {isLoading ? (
@@ -99,21 +144,27 @@ export default function ProjectsPage() {
             </Card>
           ))}
         </div>
-      ) : projects.length === 0 ? (
+      ) : filteredProjects.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16 text-center">
           <FolderOpen className="mb-4 h-12 w-12 text-muted-foreground/40" />
-          <h3 className="mb-1 text-lg font-semibold">Keine Projekte</h3>
+          <h3 className="mb-1 text-lg font-semibold">
+            {statusFilter === 'active' ? 'Keine aktiven Projekte' : 'Keine archivierten Projekte'}
+          </h3>
           <p className="mb-4 text-sm text-muted-foreground">
-            Erstellen Sie Ihr erstes Projekt, um loszulegen.
+            {statusFilter === 'active'
+              ? 'Erstellen Sie Ihr erstes Projekt, um loszulegen.'
+              : 'Archivierte Projekte werden hier angezeigt.'}
           </p>
-          <Button onClick={() => { setSelectedProject(null); setDialogOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Erstes Projekt erstellen
-          </Button>
+          {statusFilter === 'active' && (
+            <Button onClick={() => { setSelectedProject(null); setDialogOpen(true); }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Erstes Projekt erstellen
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
+          {filteredProjects.map((project) => (
             <div key={project.id} className="relative group">
               <Link href={`/projects/${project.id}`}>
                 <Card className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-md">
@@ -138,6 +189,19 @@ export default function ProjectsPage() {
                             <Pencil className="mr-2 h-4 w-4" />
                             Bearbeiten
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => handleArchive(project, e)}>
+                            {project.status === 'active' ? (
+                              <>
+                                <Archive className="mr-2 h-4 w-4" />
+                                Archivieren
+                              </>
+                            ) : (
+                              <>
+                                <ArchiveRestore className="mr-2 h-4 w-4" />
+                                Reaktivieren
+                              </>
+                            )}
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => handleDelete(project, e)} className="text-destructive">
                             <Trash2 className="mr-2 h-4 w-4" />
                             Löschen
@@ -152,14 +216,20 @@ export default function ProjectsPage() {
                     )}
                   </CardHeader>
                   <CardContent>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        Erstellt:{" "}
-                        {format(new Date(project.created_at), "dd. MMM yyyy", {
-                          locale: de,
-                        })}
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <CheckSquare className="h-3 w-3" />
+                        <span>{getTaskCount(project)} Tasks</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          Erstellt:{" "}
+                          {format(new Date(project.created_at), "dd. MMM yyyy", {
+                            locale: de,
+                          })}
+                        </span>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -182,7 +252,7 @@ export default function ProjectsPage() {
             <AlertDialogTitle>Projekt löschen?</AlertDialogTitle>
             <AlertDialogDescription>
               Möchten Sie "{selectedProject?.name}" wirklich löschen?
-              Alle zugehörigen Tasks werden ebenfalls gelöscht.
+              Das Projekt kann nur gelöscht werden, wenn es keine Tasks enthält.
               Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>

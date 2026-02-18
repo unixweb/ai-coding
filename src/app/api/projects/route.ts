@@ -12,6 +12,13 @@ export async function GET(request: Request) {
   try {
     const supabase = await createClient()
 
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 })
+    }
+
     const { data: projects, error } = await supabase
       .from('tsk_projects')
       .select(`
@@ -20,6 +27,7 @@ export async function GET(request: Request) {
         tasks:tsk_tasks(count)
       `)
       .order('created_at', { ascending: false })
+      .limit(100)
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
