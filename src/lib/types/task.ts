@@ -15,9 +15,9 @@ export interface Task {
 export interface TaskFormData {
   title: string;
   description: string;
-  assigned_to: string;
+  assigned_to: string | null;
   status: TaskStatus;
-  due_date: string;
+  due_date: string | null;
 }
 
 export interface TeamMember {

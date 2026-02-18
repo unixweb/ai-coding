@@ -166,155 +166,165 @@ Alle bereits vorhanden:
 - `react-hook-form`, `@hookform/resolvers`, `zod` (PROJ-1)
 - shadcn/ui: Card, Button, Dialog, Input, Textarea, Select, Dropdown-Menu, Badge, Skeleton, Toast
 
-## QA Test Results
+## QA Test Results (Re-test #2 -- Post tsk_ Refactoring)
 
 **Tested:** 2026-02-18
 **App URL:** http://localhost:3000
 **Tester:** QA Engineer (AI)
+**Context:** Full re-test after database table rename (tsk_ prefix). Build passes successfully.
+
+### Database Refactoring Verification (tsk_ prefix)
+- [x] GET /api/projects uses .from('tsk_projects') with JOINs on tsk_teams and tsk_tasks -- CORRECT
+- [x] POST /api/projects uses .from('tsk_projects') and .from('tsk_team_members') -- CORRECT
+- [x] GET/PUT/DELETE /api/projects/[id] all use tsk_projects and tsk_tasks -- CORRECT
+- [x] No remaining references to old table names
 
 ### Acceptance Criteria Status
 
 #### AC-1: Benutzer kann ein neues Projekt mit Name (Pflichtfeld) und Beschreibung (optional) erstellen
-- [ ] BUG: The /projects page does NOT have a "Neues Projekt erstellen" button or dialog. The page is read-only, displaying projects from mock data via useProjects() hook. There is no create project UI anywhere. The "Neues Projekt" button on the dashboard links to /projects, not to a create dialog.
+- [x] FIXED (was BUG-9): Projects page NOW has "Neues Projekt" button (line 82-85). Clicking it opens ProjectDialog component which sends POST to /api/projects.
+- [x] PASS: ProjectDialog has name (required) and description (optional) fields with Zod validation
 
 #### AC-2: Projekt erhaelt automatisch einen Status (Active, Archived)
-- [x] Database schema defines project_status ENUM ('active', 'archived') with default 'active'
-- [x] API GET supports ?status= query parameter (defaults to 'active')
+- [x] PASS: Database default 'active'. API supports ?status= parameter.
 
 #### AC-3: Benutzer sieht eine Liste aller seiner Projekte (nur Active standardmaessig)
-- [x] Projects page displays a grid of project cards
-- [ ] BUG: Projects page uses mock data (MOCK_PROJECTS from mock-data.ts) instead of fetching from the API. The useProjects() hook returns hardcoded MOCK_PROJECTS, not API data. No fetch call to /api/projects exists in the frontend.
+- [x] FIXED (was BUG-10): useProjects hook in /home/joachim/git/kit2/src/hooks/use-projects.ts NOW fetches from /api/projects API (line 23) instead of mock data
+- [ ] BUG: API GET /api/projects does NOT filter by status='active' by default. The previous status filter was REMOVED in commit 354036b "fix: Remove status filter from projects API". This means archived projects will appear mixed with active ones, violating the AC that says "nur Active standardmaessig".
 
 #### AC-4: Projektliste zeigt Name, Beschreibung (gekuerzt), Erstelldatum und Anzahl der Tasks
-- [x] Name shown in CardTitle
-- [x] Description shown with line-clamp-2
-- [x] Created date shown with date-fns formatting
-- [ ] BUG: Task count (Anzahl der Tasks) is NOT displayed on project cards. The mock data Project type does not include a task count field.
+- [x] PASS: Name in CardTitle, Description with line-clamp-2, Date formatted with date-fns
+- [ ] STILL OPEN (BUG-11): Task count NOT displayed on project cards. The API includes tasks:tsk_tasks(count) in the select, but the Project interface in use-projects.ts does not define a tasks field, and the project card rendering does not display task count.
 
 #### AC-5: Benutzer kann Projektdetails bearbeiten (Name, Beschreibung, Status)
-- [ ] BUG: No edit project dialog or UI exists. The project detail page (/projects/[id]) only shows tasks. There is no way to edit project name, description, or status from the frontend.
+- [x] FIXED (was BUG-12): DropdownMenu on project cards (line 128-145) includes "Bearbeiten" option. Clicking opens ProjectDialog in edit mode (with project prop). Dialog sends PUT to /api/projects/{id}.
+- [ ] PARTIAL: Name and description are editable in the dialog, but Status (Active/Archived) is NOT editable in the ProjectDialog. The dialog only has name and description fields -- no status select.
 
 #### AC-6: Benutzer kann ein Projekt archivieren (Status -> Archived)
-- [ ] BUG: No archive button or UI exists. The PUT /api/projects/[id] API supports status changes but no frontend exposes this.
+- [ ] STILL FAILING: No "Archivieren" option in the dropdown menu. The dropdown only has "Bearbeiten" and "Loeschen" (lines 137-144). The PUT API supports status changes but no frontend exposes archive functionality.
 
 #### AC-7: Archivierte Projekte koennen ueber einen Filter angezeigt werden
-- [ ] BUG: No filter tabs (Active/Archived) exist on the /projects page. The tech design specifies filter tabs but none were implemented.
+- [ ] STILL FAILING (BUG-14): No filter tabs for Active/Archived exist on the /projects page
 
 #### AC-8: Benutzer kann ein Projekt loeschen (nur wenn es keine Tasks enthaelt)
-- [ ] BUG: No delete project UI exists. The DELETE /api/projects/[id] API correctly checks for tasks before deletion, but no frontend button or dialog exists.
+- [x] FIXED (was BUG-13): Delete option exists in DropdownMenuItem (line 141-144)
+- [x] PASS: AlertDialog confirmation dialog with "Abbrechen" and destructive "Loeschen" button
+- [x] PASS: API checks task count before deletion
 
 #### AC-9: Beim Loeschen erscheint eine Bestaetigungsmeldung
-- [ ] BUG: No delete confirmation dialog exists (because delete UI itself is missing per AC-8).
+- [x] FIXED: AlertDialog (lines 179-196) shows "Projekt loeschen?" with warning text and confirmation buttons
 
 #### AC-10: Projekte sind nach Erstelldatum sortiert (neueste zuerst)
-- [x] API sorts by created_at descending
-- [x] Mock data is hardcoded in order
+- [x] PASS: API .order('created_at', { ascending: false })
 
 ### Edge Cases Status
 
 #### EC-1: Project without name
-- [x] API Zod schema requires name (min 1 char) -- but cannot be tested from frontend since create UI is missing
+- [x] PASS: Zod requires min 1 char. ProjectDialog has required attribute on name input. Button disabled when !name (line 110).
 
 #### EC-2: Delete project with tasks
-- [x] API correctly checks task count before deletion and returns error
+- [x] PASS: API correctly checks tsk_tasks count and returns error message
 
 #### EC-3: No projects (empty state)
-- [x] Projects page shows empty state with FolderOpen icon, "Keine Projekte" text
-- [ ] BUG: Empty state shows "Es sind noch keine Projekte vorhanden" but does NOT show a "Erstellen Sie Ihr erstes Projekt" CTA button as required by the spec. The empty state only has text, no action button.
+- [x] FIXED (was BUG-15): Empty state NOW includes "Erstes Projekt erstellen" button (line 109-112) with Plus icon
 
 #### EC-4: Edit archived project
-- [ ] BUG: Cannot be tested -- no edit UI exists
+- [ ] CANNOT TEST: No way to archive a project from frontend, so cannot test editing an archived project
 
 #### EC-5: Project name > 100 chars
-- [x] API Zod schema enforces max 100 chars
-- [x] Database CHECK constraint enforces char_length(name) <= 100
+- [x] PASS: API Zod enforces max 100 chars
 
 ### Security Audit Results
-- [ ] BUG: The GET /api/projects and POST /api/projects routes do NOT verify authentication before processing. They rely entirely on Supabase RLS. While RLS provides protection, the API should also explicitly check auth as a defense-in-depth measure (as required by security rules). If RLS is misconfigured, all projects would be exposed.
-- [x] RLS policies properly restrict project access to team members
+- [ ] STILL OPEN (BUG-16): GET /api/projects does NOT check authentication (supabase.auth.getUser()). Relies entirely on Supabase RLS. POST /api/projects line 45 DOES check auth. Inconsistent.
+- [x] RLS policies restrict project access to team members
 - [x] Zod validation on all input fields
-- [ ] BUG: GET /api/projects does not use .limit() as required by backend rules. A user with many projects could receive unbounded results.
+- [ ] STILL OPEN (BUG-17): GET /api/projects does not use .limit(). Unbounded results possible.
+- [x] tsk_ prefix applied consistently -- no table name mismatch
 
-### Bugs Found
+### Bugs Found (Updated)
 
-#### BUG-9: No create project UI
-- **Severity:** Critical
-- **Steps to Reproduce:**
-  1. Navigate to /projects
-  2. Expected: "Neues Projekt erstellen" button that opens a create dialog
-  3. Actual: No create button or dialog exists
-- **Priority:** Fix before deployment
+#### BUG-9: No create project UI [FIXED]
+- ProjectDialog component with "Neues Projekt" button now implemented
 
-#### BUG-10: Projects page uses mock data instead of API
-- **Severity:** Critical
-- **Steps to Reproduce:**
-  1. Navigate to /projects
-  2. Expected: Projects fetched from /api/projects (Supabase)
-  3. Actual: Hardcoded MOCK_PROJECTS from mock-data.ts are displayed
-- **Priority:** Fix before deployment
+#### BUG-10: Projects page uses mock data instead of API [FIXED]
+- useProjects hook now fetches from /api/projects
 
-#### BUG-11: Task count not shown on project cards
+#### BUG-11: Task count not shown on project cards [STILL OPEN]
 - **Severity:** Medium
-- **Steps to Reproduce:**
-  1. Navigate to /projects
-  2. Expected: Each project card shows number of tasks
-  3. Actual: No task count badge displayed
+- **Location:** /home/joachim/git/kit2/src/app/projects/page.tsx -- no task count rendering; /home/joachim/git/kit2/src/hooks/use-projects.ts -- Project interface missing tasks field
 - **Priority:** Fix before deployment
 
-#### BUG-12: No edit project UI
-- **Severity:** Critical
-- **Steps to Reproduce:**
-  1. Navigate to /projects or a project detail page
-  2. Expected: Edit button/dialog to change name, description, status
-  3. Actual: No edit functionality in the UI
-- **Priority:** Fix before deployment
+#### BUG-12: No edit project UI [FIXED]
+- DropdownMenu with "Bearbeiten" now opens ProjectDialog in edit mode
 
-#### BUG-13: No archive/delete project UI
-- **Severity:** Critical
-- **Steps to Reproduce:**
-  1. Navigate to /projects
-  2. Expected: 3-dot dropdown menu with Archive and Delete options
-  3. Actual: No action menu on project cards
-- **Priority:** Fix before deployment
+#### BUG-13: No archive/delete project UI [PARTIALLY FIXED]
+- Delete is implemented. Archive is NOT implemented (no "Archivieren" menu item).
 
-#### BUG-14: No Active/Archived filter tabs
+#### BUG-14: No Active/Archived filter tabs [STILL OPEN]
 - **Severity:** High
-- **Steps to Reproduce:**
-  1. Navigate to /projects
-  2. Expected: Filter tabs for "Aktive Projekte" and "Archivierte Projekte"
-  3. Actual: No filter tabs exist
+- **Location:** /home/joachim/git/kit2/src/app/projects/page.tsx -- no filter tabs
 - **Priority:** Fix before deployment
 
-#### BUG-15: Empty state missing CTA button
+#### BUG-15: Empty state missing CTA button [FIXED]
+- "Erstes Projekt erstellen" button now present
+
+#### BUG-16: No explicit auth check in project GET API [STILL OPEN]
+- **Severity:** Medium
+- **Location:** /home/joachim/git/kit2/src/app/api/projects/route.ts GET handler (line 11) -- no auth check
+- **Priority:** Fix before deployment
+
+#### BUG-17: No .limit() on project list query [STILL OPEN]
 - **Severity:** Low
-- **Steps to Reproduce:**
-  1. Navigate to /projects with no projects
-  2. Expected: "Erstellen Sie Ihr erstes Projekt" button
-  3. Actual: Only text, no action button
+- **Location:** /home/joachim/git/kit2/src/app/api/projects/route.ts line 15
 - **Priority:** Fix in next sprint
 
-#### BUG-16: No explicit auth check in project API routes
-- **Severity:** Medium
+#### BUG-P1: Status filter removed from projects API [NEW]
+- **Severity:** High
+- **Location:** /home/joachim/git/kit2/src/app/api/projects/route.ts -- commit 354036b removed status filtering
 - **Steps to Reproduce:**
-  1. Review GET/POST /api/projects code
-  2. Expected: supabase.auth.getUser() check before processing
-  3. Actual: Relies solely on RLS without explicit auth verification
+  1. Navigate to /projects
+  2. Expected: Only active projects shown by default
+  3. Actual: All projects (active AND archived) shown together
 - **Priority:** Fix before deployment
 
-#### BUG-17: No .limit() on project list query
-- **Severity:** Low
+#### BUG-P2: Archive functionality missing from UI [NEW -- split from BUG-13]
+- **Severity:** High
+- **Location:** /home/joachim/git/kit2/src/app/projects/page.tsx -- no "Archivieren"/"Reaktivieren" in dropdown menu
 - **Steps to Reproduce:**
-  1. Review GET /api/projects code
-  2. Expected: .limit() applied to query
-  3. Actual: No limit on results
+  1. Navigate to /projects
+  2. Click 3-dot menu on a project card
+  3. Expected: "Archivieren" option in dropdown
+  4. Actual: Only "Bearbeiten" and "Loeschen" options
+- **Priority:** Fix before deployment
+
+#### BUG-P3: Project edit dialog missing status select [NEW]
+- **Severity:** Medium
+- **Location:** /home/joachim/git/kit2/src/components/project-dialog.tsx -- only name and description fields, no status select
+- **Steps to Reproduce:**
+  1. Click "Bearbeiten" on a project
+  2. Expected: Dialog with name, description, AND status (Active/Archived) fields
+  3. Actual: Dialog only has name and description
+- **Priority:** Fix before deployment
+
+#### BUG-P4: Delete confirmation dialog text is misleading [NEW]
+- **Severity:** Low
+- **Location:** /home/joachim/git/kit2/src/app/projects/page.tsx lines 183-186
+- **Steps to Reproduce:**
+  1. Click delete on a project
+  2. Dialog says "Alle zugehoerigen Tasks werden ebenfalls geloescht"
+  3. But API actually PREVENTS deletion if tasks exist
+  4. Expected: Dialog should say "Projekt kann nur geloescht werden wenn keine Tasks vorhanden sind"
 - **Priority:** Fix in next sprint
 
 ### Summary
-- **Acceptance Criteria:** 3/10 passed
-- **Bugs Found:** 9 total (4 critical, 1 high, 2 medium, 2 low)
-- **Security:** Issues found (missing auth checks, missing query limits)
-- **Production Ready:** NO
-- **Recommendation:** Major frontend work needed. The project management frontend is severely incomplete -- almost all CRUD operations are missing from the UI. The API backend is functional but the frontend only displays mock data.
+- **Acceptance Criteria:** 6/10 passed (up from 3/10)
+- **Previously found bugs:** 4 FIXED (BUG-9, BUG-10, BUG-12, BUG-15), 1 PARTIALLY FIXED (BUG-13), 4 STILL OPEN
+- **New bugs:** 4 (BUG-P1, BUG-P2, BUG-P3, BUG-P4)
+- **Remaining bugs:** 8 total (0 critical, 3 high, 3 medium, 2 low)
+- **tsk_ Refactoring Impact:** Status filter removal (commit 354036b) during refactoring period caused new BUG-P1
+- **Security:** Missing explicit auth check (BUG-16) and missing .limit() (BUG-17) still open
+- **Production Ready:** NO (3 high-severity bugs: BUG-14, BUG-P1, BUG-P2)
+- **Recommendation:** Re-add status filter to API, add Active/Archived filter tabs, add archive menu option
 
 ## Deployment
 _To be added by /deploy_

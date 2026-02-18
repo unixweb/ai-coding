@@ -5,9 +5,9 @@ import { z } from 'zod'
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().optional(),
-  assigned_to: z.string().uuid().nullable().optional(),
+  assigned_to: z.union([z.string().uuid(), z.null()]).optional(),
   status: z.enum(['to_do', 'in_progress', 'completed']).optional(),
-  due_date: z.string().nullable().optional(),
+  due_date: z.union([z.string(), z.null()]).optional(),
 })
 
 export async function GET(

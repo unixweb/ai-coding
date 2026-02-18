@@ -6,9 +6,9 @@ const createTaskSchema = z.object({
   project_id: z.string().uuid('Ungültige Projekt-ID'),
   title: z.string().min(1, 'Task-Titel ist erforderlich').max(200, 'Task-Titel darf maximal 200 Zeichen lang sein'),
   description: z.string().optional(),
-  assigned_to: z.string().uuid().nullable().optional(),
+  assigned_to: z.union([z.string().uuid(), z.null()]).optional(),
   status: z.enum(['to_do', 'in_progress', 'completed']).default('to_do'),
-  due_date: z.string().nullable().optional(),
+  due_date: z.union([z.string(), z.null()]).optional(),
 })
 
 export async function GET(request: Request) {

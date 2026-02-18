@@ -228,155 +228,144 @@ Jeder Task enthält:
 **Optional:**
 - shadcn/ui DatePicker (basiert auf `react-day-picker`)
 
-## QA Test Results
+## QA Test Results (Re-test #2 -- Post tsk_ Refactoring)
 
 **Tested:** 2026-02-18
 **App URL:** http://localhost:3000
 **Tester:** QA Engineer (AI)
+**Context:** Full re-test after database table rename (tsk_ prefix). Build passes successfully.
+
+### Database Refactoring Verification (tsk_ prefix)
+- [x] GET /api/tasks uses .from('tsk_tasks') with JOINs on tsk_projects and tsk_profiles -- CORRECT
+- [x] POST /api/tasks uses .from('tsk_tasks') with same JOINs -- CORRECT
+- [x] GET/PUT/DELETE /api/tasks/[id] all use tsk_tasks, tsk_projects, tsk_profiles -- CORRECT
+- [x] Foreign key hint syntax correct: tsk_profiles!assigned_to -- CORRECT
+- [x] No remaining references to old table names
+
+### Important Finding: Two Competing useTasks Hooks Exist
+There are TWO useTasks hooks in the codebase:
+1. /home/joachim/git/kit2/src/hooks/use-tasks.ts -- OLD: uses localStorage + MOCK_TASKS (also exports useTeamMembers with MOCK_TEAM_MEMBERS, useProject with MOCK_PROJECTS, useProjects with MOCK_PROJECTS)
+2. /home/joachim/git/kit2/src/hooks/use-tasks-api.ts -- NEW: fetches from /api/tasks API
+
+The project detail page (/projects/[id]/page.tsx line 20) imports from use-tasks-api -- CORRECT.
+However, the OLD use-tasks.ts file still exists and exports competing mock-based hooks that could be accidentally imported elsewhere.
 
 ### Acceptance Criteria Status
 
 #### AC-1: Benutzer kann einen neuen Task erstellen (Titel Pflichtfeld, Beschreibung optional, Faelligkeitsdatum optional)
-- [x] TaskFormDialog exists with title (required, max 200), description (optional), due_date (optional)
-- [x] Zod validation enforces title min 1, max 200 characters
-- [x] Character counter shows current length vs. max 200
-- [ ] BUG: Task creation uses localStorage (mock data) instead of the /api/tasks API. The useTasks() hook in use-tasks.ts reads/writes to localStorage with MOCK_TASKS as fallback. No fetch call to the API exists.
+- [x] FIXED (was BUG-18): Project detail page now imports useTasks from use-tasks-api.ts which calls /api/tasks
+- [x] PASS: TaskFormDialog with title (required, max 200), description (optional), due_date (optional)
+- [x] PASS: API creates task in tsk_tasks table via Supabase
 
 #### AC-2: Task erhaelt automatisch den Status "To Do"
-- [x] TaskFormDialog defaults status to "todo"
-- [x] API schema defaults status to "to_do"
-- [ ] BUG: Frontend uses "todo" as status value, but the API/database uses "to_do". This mismatch means frontend tasks and API tasks use incompatible status values. The TaskStatus type is "todo" | "in_progress" | "completed" but the API uses 'to_do' | 'in_progress' | 'completed'.
+- [x] FIXED (was BUG-19): TaskStatus type in /home/joachim/git/kit2/src/lib/types/task.ts line 1 now uses "to_do" | "in_progress" | "completed" -- matches API/DB
+- [x] PASS: API Zod schema defaults to 'to_do'
 
 #### AC-3: Task kann einer Person zugewiesen werden (Dropdown mit Teammitgliedern)
-- [x] TaskFormDialog includes assignee select dropdown
-- [x] TeamMembers are passed as options
-- [ ] BUG: useTeamMembers() hook returns hardcoded MOCK_TEAM_MEMBERS instead of fetching from /api/teams/members. Team members shown in the dropdown are static mock data.
+- [x] FIXED (was BUG-20): Project detail page imports useTeamMembers from /home/joachim/git/kit2/src/hooks/use-team.ts (line 22) which fetches from /api/teams/members
+- [ ] BUG: useTeamMembers (use-team.ts) calls /api/teams/members WITHOUT a team_id parameter (line 23). The API requires team_id as a query parameter and returns 400 "Team-ID ist erforderlich" without it. This means the assignee dropdown will fail to load team members.
 
 #### AC-4: Benutzer sieht alle Tasks eines Projekts in einer Liste
-- [x] Kanban board view shows tasks grouped by status
-- [x] List view (table) shows all tasks
-- [x] Both views available via toggle button
+- [x] PASS: Kanban board and list view both functional. API fetched via use-tasks-api.ts
 
 #### AC-5: Task-Liste zeigt: Titel, Zustaendige Person, Status, Faelligkeitsdatum
-- [x] TaskListView table has columns: Titel, Status, Zustaendig, Faellig
-- [x] TaskCard shows title, assignee avatar, status badge, due date
+- [x] PASS: All columns shown in both Kanban cards and list table
 
 #### AC-6: Benutzer kann Task-Status aendern: To Do -> In Progress -> Completed
-- [x] Status change via dropdown menu in task card
-- [x] Status change via drag & drop in Kanban board
-- [x] Status change via select dropdown in TaskDetailsSheet
-- [x] All three status transitions supported
+- [x] PASS: Status change via dropdown, drag & drop, and TaskDetailsSheet -- all using API via use-tasks-api.ts
 
 #### AC-7: Benutzer kann Task-Details bearbeiten
-- [x] TaskFormDialog in edit mode pre-fills all fields
-- [x] All fields editable: title, description, assignee, due_date
-- [x] Changes saved via updateTask in useTasks hook
+- [x] PASS: TaskFormDialog in edit mode, sends PUT to /api/tasks/{id}
 
 #### AC-8: Benutzer kann einen Task loeschen (mit Bestaetigungsmeldung)
-- [x] TaskDeleteDialog shows confirmation with task title
-- [x] "Endgueltig loeschen" button in red (destructive)
-- [x] "Abbrechen" button to cancel
+- [x] PASS: TaskDeleteDialog with confirmation, sends DELETE to /api/tasks/{id}
 
 #### AC-9: Tasks koennen nach Status, Zustaendiger Person oder Faelligkeitsdatum gefiltert werden
-- [x] TaskToolbar has filter popover with Status, Assignee, Due Date filters
-- [x] Filter chips show active filters with remove buttons
-- [x] filterTasks() function in use-tasks.ts handles all filter combinations
+- [x] PASS: TaskToolbar filters with Status, Assignee, Due Date. filterTasks() in use-tasks-api.ts handles all combinations.
 
 #### AC-10: Ueberfaellige Tasks werden visuell hervorgehoben (rot)
-- [x] isOverdue() function checks if due_date < today
-- [x] Overdue tasks get "border-destructive/50" border on card
-- [x] Due date text shown in "text-destructive" (red) when overdue
-- [x] Completed tasks excluded from overdue highlighting
+- [x] PASS: Overdue highlighting with destructive colors, completed tasks excluded
 
 ### Edge Cases Status
 
 #### EC-1: Task without title
-- [x] Zod schema requires min 1 char for title
-- [x] FormMessage displays "Task-Titel ist erforderlich"
+- [x] PASS: Zod enforces min 1 char, "Task-Titel ist erforderlich" message
 
 #### EC-2: Project with no tasks (empty state)
-- [x] TaskEmptyState component shows "Noch keine Tasks in diesem Projekt"
-- [x] "Ersten Task erstellen" button triggers create dialog
+- [x] PASS: TaskEmptyState with "Ersten Task erstellen" button
 
 #### EC-3: Due date in the past
-- [x] Alert shown: "Das Faelligkeitsdatum liegt in der Vergangenheit" (warning, but submission allowed)
+- [x] PASS: Warning shown, submission allowed
 
 #### EC-4: Unassigned task
-- [x] "Nicht zugewiesen" shown in task card and details sheet
-- [x] "unassigned" option available in assignee select
+- [x] PASS: "Nicht zugewiesen" shown correctly
 
 #### EC-5: Assigned user removed from team
-- [ ] BUG: Cannot be tested with mock data. Since team members are hardcoded, removing a member cannot be simulated.
+- [ ] STILL CANNOT TEST: Requires live Supabase environment to test team member removal
 
 #### EC-6: Task title > 200 chars
-- [x] Zod schema enforces max 200 chars
-- [x] Input has maxLength=200 attribute
-- [x] Character counter shows usage
+- [x] PASS: Zod max 200, maxLength=200 attribute, character counter
 
 ### Security Audit Results
-- [ ] BUG: ALL task data is stored in localStorage (client-side only). No authentication or authorization checks are performed on task operations. Any user can read/write all tasks by accessing localStorage directly. This completely bypasses the designed RLS policies.
-- [x] API routes exist with proper Zod validation and Supabase RLS -- but are NOT used by the frontend
-- [ ] BUG: Task GET API at /api/tasks does not use .limit(). A project with many tasks could return unbounded results.
-- [ ] BUG: Task API routes (GET /api/tasks, POST /api/tasks) do not explicitly check authentication. They rely on Supabase RLS only.
+- [x] FIXED: Tasks now stored in Supabase via API (not localStorage). RLS provides data isolation.
+- [ ] STILL OPEN (BUG-22): Task API routes GET/POST do not explicitly check authentication. Rely solely on RLS.
+- [ ] STILL OPEN (BUG-21): GET /api/tasks does not use .limit()
+- [x] tsk_ prefix applied consistently. Foreign key hint tsk_profiles!assigned_to is correct syntax.
 
-### Bugs Found
+### Regression Concern: Dead Code
+- [ ] BUG-T1 (NEW): The OLD use-tasks.ts file (/home/joachim/git/kit2/src/hooks/use-tasks.ts) still exists with localStorage-based implementation and MOCK data exports. It also exports useTeamMembers(), useProject(), and useProjects() that return mock data. While the project detail page correctly imports from use-tasks-api.ts, the old file is confusing dead code that could be accidentally imported. Mock data file (/home/joachim/git/kit2/src/lib/mock-data.ts) is also still present.
 
-#### BUG-18: Tasks use localStorage instead of API
-- **Severity:** Critical
-- **Steps to Reproduce:**
-  1. Navigate to /projects/project-1
-  2. Create a task
-  3. Open browser DevTools > Application > localStorage
-  4. Expected: Task sent to /api/tasks API and stored in Supabase
-  5. Actual: Task stored in localStorage under key "kit2_tasks"
-- **Priority:** Fix before deployment
+### Bugs Found (Updated)
 
-#### BUG-19: Status value mismatch between frontend and API
+#### BUG-18: Tasks use localStorage instead of API [FIXED]
+- Project detail page now uses use-tasks-api.ts which fetches from /api/tasks
+
+#### BUG-19: Status value mismatch [FIXED]
+- TaskStatus type updated to "to_do" | "in_progress" | "completed" matching API/DB
+
+#### BUG-20: Team members are hardcoded mock data [FIXED]
+- useTeamMembers in use-team.ts now fetches from /api/teams/members
+
+#### BUG-T2: useTeamMembers calls /api/teams/members without team_id [NEW -- related to BUG-25 in PROJ-4]
 - **Severity:** High
+- **Location:** /home/joachim/git/kit2/src/hooks/use-team.ts line 23
 - **Steps to Reproduce:**
-  1. Frontend TaskStatus type uses "todo" | "in_progress" | "completed"
-  2. API/Database uses "to_do" | "in_progress" | "completed"
-  3. Expected: Consistent status values
-  4. Actual: "todo" (frontend) vs "to_do" (API/DB) -- would cause errors when integrating
-- **Priority:** Fix before deployment
-
-#### BUG-20: Team members are hardcoded mock data
-- **Severity:** High
-- **Steps to Reproduce:**
-  1. Navigate to any project page
+  1. Navigate to /projects/{id}
   2. Open task create/edit dialog
-  3. Expected: Assignee dropdown shows real team members from API
-  4. Actual: Shows hardcoded mock names (Anna Schmidt, Max Mustermann, Lisa Weber, Tom Fischer)
+  3. Expected: Assignee dropdown shows team members
+  4. Actual: API returns 400 "Team-ID ist erforderlich" -- dropdown empty or errored
 - **Priority:** Fix before deployment
 
-#### BUG-21: No .limit() on task list query
+#### BUG-21: No .limit() on task list query [STILL OPEN]
 - **Severity:** Low
-- **Steps to Reproduce:**
-  1. Review GET /api/tasks code
-  2. Expected: .limit() applied
-  3. Actual: No limit, could return thousands of tasks
+- **Location:** /home/joachim/git/kit2/src/app/api/tasks/route.ts line 25
 - **Priority:** Fix in next sprint
 
-#### BUG-22: No explicit auth check in task API routes
+#### BUG-22: No explicit auth check in task API routes [STILL OPEN]
 - **Severity:** Medium
-- **Steps to Reproduce:**
-  1. Review GET/POST /api/tasks code
-  2. Expected: supabase.auth.getUser() check before processing
-  3. Actual: Relies solely on RLS
+- **Location:** /home/joachim/git/kit2/src/app/api/tasks/route.ts GET (line 14) and POST (line 64)
 - **Priority:** Fix before deployment
 
+#### BUG-T1: Dead code -- old mock-based hooks and mock data files still present [NEW]
+- **Severity:** Low
+- **Location:** /home/joachim/git/kit2/src/hooks/use-tasks.ts, /home/joachim/git/kit2/src/lib/mock-data.ts
+- **Steps to Reproduce:** Files exist with competing exports that could be accidentally used
+- **Priority:** Fix in next sprint (cleanup)
+
 ### Cross-Browser / Responsive Notes
-- [x] Kanban board switches from horizontal to vertical layout on mobile (md:flex-row)
-- [x] List view hides "Zustaendig" column on mobile (hidden md:table-cell)
-- [x] Task toolbar stacks vertically on mobile (flex-col sm:flex-row)
-- [x] Filter popover aligns to end
+- [x] Kanban board responsive (md:flex-row)
+- [x] List view responsive (hidden md:table-cell)
+- [x] Task toolbar responsive (flex-col sm:flex-row)
 
 ### Summary
-- **Acceptance Criteria:** 7/10 passed (most UI is functional but uses mock data)
-- **Bugs Found:** 5 total (1 critical, 2 high, 1 medium, 1 low)
-- **Security:** Critical issue -- all task data is client-side only, no real backend integration
-- **Production Ready:** NO
-- **Recommendation:** The task management UI is well-built and feature-rich (Kanban, list view, drag & drop, filters). However, it is completely disconnected from the backend API. The primary work needed is to replace localStorage/mock data with API calls.
+- **Acceptance Criteria:** 9/10 passed (up from 7/10)
+- **Previously found bugs:** 3 FIXED (BUG-18, BUG-19, BUG-20), 2 STILL OPEN (BUG-21, BUG-22)
+- **New bugs:** 2 (BUG-T2 high, BUG-T1 low)
+- **Remaining bugs:** 4 total (0 critical, 1 high, 1 medium, 2 low)
+- **tsk_ Refactoring Impact:** Table names correctly updated. No regression from rename. Foreign key hint tsk_profiles!assigned_to works correctly.
+- **Security:** Greatly improved -- tasks now use real API with RLS protection instead of localStorage
+- **Production Ready:** NO (1 high-severity bug: BUG-T2 missing team_id parameter blocks assignee dropdown)
+- **Recommendation:** Fix BUG-T2 (team_id parameter) to enable assignee functionality. Clean up dead code (BUG-T1).
 
 ## Deployment
 _To be added by /deploy_

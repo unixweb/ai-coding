@@ -116,11 +116,9 @@ export function TaskFormDialog({
     onSubmit({
       title: values.title,
       description: values.description,
-      assigned_to: values.assigned_to,
+      assigned_to: values.assigned_to && values.assigned_to !== "unassigned" ? values.assigned_to : null,
       status: values.status,
-      due_date: values.due_date
-        ? new Date(values.due_date).toISOString()
-        : "",
+      due_date: values.due_date ? new Date(values.due_date).toISOString().split('T')[0] : null,
     });
     onOpenChange(false);
   };

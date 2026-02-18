@@ -144,163 +144,160 @@ Authentifizierungs-System
 **Bereits vorhanden:**
 - shadcn/ui (Button, Input, Card, Form, Label, Toast)
 
-## QA Test Results
+## QA Test Results (Re-test #2 -- Post tsk_ Refactoring)
 
 **Tested:** 2026-02-18
 **App URL:** http://localhost:3000
 **Tester:** QA Engineer (AI)
+**Context:** Full re-test after database table rename (tsk_ prefix). Build passes successfully.
+
+### Database Refactoring Verification (tsk_ prefix)
+- [x] /api/auth/profile uses tsk_profiles -- CORRECT
+- [x] No remaining references to old table names (profiles, projects, tasks, etc.) in any API route
+- [x] All JOIN references updated (tsk_teams, tsk_profiles, tsk_projects, tsk_tasks)
+- [x] Build compiles cleanly with no errors
 
 ### Acceptance Criteria Status
 
 #### AC-1: Benutzer kann sich mit E-Mail und Passwort registrieren (min. 8 Zeichen)
-- [x] Signup page exists at /signup with E-Mail, Password, Name fields
-- [x] Server-side Zod validation enforces min 8 chars for password
-- [x] Client-side HTML minLength=8 attribute present
-- [x] API route /api/auth/signup validates with Zod and calls supabase.auth.signUp
+- [x] PASS: Signup page at /signup with E-Mail, Password (minLength=8), Name fields
+- [x] PASS: Server-side Zod validation enforces min 8 chars for password
+- [x] PASS: Rate limiting now applied (3 signup attempts/hour via checkRateLimit)
+- [x] PASS: API validates with Zod and calls supabase.auth.signUp
 
 #### AC-2: Nach erfolgreicher Registrierung wird der Benutzer automatisch eingeloggt
-- [ ] BUG: After successful signup, user is redirected to /login with message "Bitte melden Sie sich an" -- NOT auto-logged-in as required. The signup page calls router.push('/login') instead of logging in. The API also returns a message saying "Bitte bestaetigen Sie Ihre E-Mail-Adresse" suggesting email confirmation is required before login. This contradicts the AC that says user should be auto-logged-in after registration.
+- [ ] STILL FAILING (BUG-1): Signup page line 42 calls router.push('/login') after success. User is shown "Bitte melden Sie sich an" and redirected to login page. API returns message "Registrierung erfolgreich! Bitte bestaetigen Sie Ihre E-Mail-Adresse." -- NOT auto-logged-in.
 
 #### AC-3: Benutzer kann sich mit E-Mail und Passwort einloggen
-- [x] Login page exists at /login with E-Mail and Password fields
-- [x] API route /api/auth/login validates with Zod and calls supabase.auth.signInWithPassword
-- [x] Generic error message "E-Mail oder Passwort ist falsch" used (does not leak which is wrong)
+- [x] PASS: Login page at /login with E-Mail and Password fields
+- [x] PASS: Generic error "E-Mail oder Passwort ist falsch" (no info leak)
 
 #### AC-4: Nach erfolgreichem Login wird der Benutzer zum Dashboard weitergeleitet
-- [x] Login page uses window.location.href = '/dashboard' after successful login (correct per frontend rules)
+- [x] PASS: window.location.href = '/dashboard' (correct per frontend rules)
 
 #### AC-5: Benutzer kann sich ausloggen und wird zur Login-Seite weitergeleitet
-- [ ] BUG: Logout redirects to '/' (root/landing page) instead of '/login' as required. Both navigation.tsx (line 23) and profile/page.tsx (line 75) use window.location.href = '/' after logout.
+- [ ] STILL FAILING (BUG-2): navigation.tsx line 23 and profile/page.tsx line 88 both use window.location.href = '/' instead of '/login'
 
 #### AC-6: Benutzer kann eine Passwort-Zuruecksetzen-E-Mail anfordern
-- [x] Reset password page exists at /reset-password
-- [x] API route calls supabase.auth.resetPasswordForEmail
-- [x] Success state shows confirmation message
+- [x] PASS: Reset password page at /reset-password, rate-limited (3/hour)
 
 #### AC-7: Passwort-Reset-Link ist 24 Stunden gueltig
-- [x] Frontend displays "Der Link ist 24 Stunden gueltig" message
-- [x] Supabase Auth manages token expiry server-side (configurable in Supabase dashboard)
+- [x] PASS: Supabase Auth manages token expiry
 
 #### AC-8: Benutzer kann seinen Namen und E-Mail-Adresse im Profil aendern
-- [ ] BUG: Profile page has E-Mail field DISABLED (line 121: disabled, className="bg-muted") with text "E-Mail-Adresse kann nicht geaendert werden". The AC requires that users CAN change their email. The API PUT /api/auth/profile supports email updates but the frontend prevents it.
-- [x] Name field is editable and submits to PUT /api/auth/profile
+- [ ] STILL FAILING (BUG-3): Email field disabled at profile/page.tsx line 179 with disabled attribute and "bg-muted" class. Text says "E-Mail-Adresse kann nicht geaendert werden". handleSubmit (line 67) only sends { name: formData.name } without email.
+- [x] PASS: Name field editable, submits to PUT /api/auth/profile
 
 #### AC-9: E-Mail-Adresse muss eindeutig sein (keine Duplikate)
-- [x] API checks for duplicate key error from Supabase and returns "Diese E-Mail-Adresse wird bereits verwendet"
-- [x] Signup API returns "Diese E-Mail-Adresse ist bereits registriert" for duplicate emails
+- [x] PASS: API checks for duplicates on both signup and profile update
 
 #### AC-10: Fehlermeldungen werden klar und verstaendlich angezeigt
-- [x] All API routes return German error messages
-- [x] Toast notifications used for success/error feedback
-- [x] Zod validation messages in German
+- [x] PASS: All German error messages, toast notifications
 
 ### Edge Cases Status
 
 #### EC-1: Already registered email at signup
-- [x] API checks for 'already registered' in error message and returns appropriate German error
+- [x] PASS: Returns "Diese E-Mail-Adresse ist bereits registriert"
 
 #### EC-2: Too short password
-- [x] Server-side Zod schema enforces min 8 chars
-- [x] Client-side HTML minLength=8 attribute present
+- [x] PASS: Zod min 8, HTML minLength=8
 
 #### EC-3: Wrong login credentials
-- [x] Generic error message "E-Mail oder Passwort ist falsch" used (correct -- does not reveal which is wrong)
+- [x] PASS: Generic error message
 
 #### EC-4: Expired password reset link
-- [x] Update-password page checks URL hash for recovery token
-- [x] Redirects to /reset-password with error toast if invalid/missing token
+- [x] PASS: Handled correctly
 
 #### EC-5: Change email to existing email in profile
-- [ ] BUG: Cannot be tested because the email field is disabled in the profile UI (see AC-8 bug above)
+- [ ] STILL BLOCKED: Cannot test -- email field disabled (BUG-3)
 
 ### Security Audit Results
-- [x] Authentication: Middleware protects /projects, /profile, /team, /dashboard routes; redirects to /login if no user
-- [ ] BUG: Rate limiting is NOT applied to ANY auth endpoint. The rate-limit.ts utility exists but is never imported or used in any API route. Login, signup, and reset-password endpoints are all vulnerable to brute-force attacks.
-- [ ] BUG: Security headers are NOT configured. next.config.ts is empty -- no X-Frame-Options, no X-Content-Type-Options, no Referrer-Policy, no Strict-Transport-Security headers. This violates the security rules in .claude/rules/security.md.
-- [ ] BUG: Login API returns full session object (data.session) in response body (line 33 of login/route.ts). This is unnecessary since session is managed via cookies. Exposing the session token in the response body is an information leak.
+- [x] FIXED (was BUG-4): Rate limiting NOW applied to login (5/15min), signup (3/hr), reset-password (3/hr) via checkRateLimit import
+- [x] FIXED (was BUG-5): Security headers NOW configured in next.config.ts: X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Referrer-Policy: origin-when-cross-origin, HSTS, X-XSS-Protection, Permissions-Policy
+- [x] FIXED (was BUG-6): Auth callback NOW validates redirect with ALLOWED_REDIRECTS whitelist and isValidRedirect() function. External URLs rejected.
+- [x] Authentication: Middleware protects /projects, /profile, /team, /dashboard routes
 - [x] Password hashing: Handled by Supabase Auth (bcrypt)
 - [x] Server-side validation: All auth APIs use Zod schemas
-- [ ] BUG: Auth callback route at /api/auth/callback uses unvalidated 'next' query parameter for redirect (line 7). An attacker could craft a URL like /api/auth/callback?code=...&next=https://evil.com to redirect users to a malicious site (Open Redirect vulnerability).
-- [ ] BUG: The password-reset redirectTo URL uses request.headers.get('origin') which can be spoofed by an attacker in certain environments. Should use a hardcoded or env-var-based URL.
-- [x] Input validation: Zod used for all request body parsing
-- [ ] BUG: Profile GET endpoint returns all columns with .select('*') instead of specific columns. Could leak internal fields if profiles table gains sensitive columns in the future.
+- [ ] STILL OPEN (BUG-7): Login API (login/route.ts line 36-39) returns session: data.session in response body. Session token should not be in response body since cookies handle session.
+- [ ] STILL OPEN (BUG-R1): Password-reset redirectTo URL uses request.headers.get('origin') (reset-password/route.ts line 24) which can be spoofed. Should use a hardcoded or env-var URL.
+- [ ] STILL OPEN (BUG-R2): Signup emailRedirectTo also uses request.headers.get('origin') (signup/route.ts line 32). Same spoofing concern.
+- [ ] STILL OPEN (BUG-R3): Profile GET endpoint uses .select('*') instead of specific columns. Could leak internal fields if tsk_profiles table gains sensitive columns.
 
-### Bugs Found
+### Bugs Found (Updated)
 
-#### BUG-1: Auto-login after registration not implemented
+#### BUG-1: Auto-login after registration not implemented [STILL OPEN]
 - **Severity:** High
+- **Location:** /home/joachim/git/kit2/src/app/signup/page.tsx line 42
 - **Steps to Reproduce:**
-  1. Go to /signup
-  2. Fill in valid name, email, password
-  3. Click "Registrieren"
-  4. Expected: User is automatically logged in and redirected to dashboard
-  5. Actual: User is redirected to /login with message to sign in manually
+  1. Go to /signup, fill valid data, submit
+  2. Expected: Auto-logged-in, redirected to dashboard
+  3. Actual: Redirected to /login with "Bitte melden Sie sich an"
 - **Priority:** Fix before deployment
 
-#### BUG-2: Logout redirects to landing page instead of login page
+#### BUG-2: Logout redirects to landing page instead of login page [STILL OPEN]
 - **Severity:** Medium
+- **Location:** /home/joachim/git/kit2/src/components/navigation.tsx line 23, /home/joachim/git/kit2/src/app/profile/page.tsx line 88
 - **Steps to Reproduce:**
-  1. Log in successfully
-  2. Click "Abmelden" in navigation or profile page
-  3. Expected: Redirected to /login
-  4. Actual: Redirected to / (landing page)
+  1. Click "Abmelden" anywhere
+  2. Expected: Redirected to /login
+  3. Actual: Redirected to /
 - **Priority:** Fix before deployment
 
-#### BUG-3: Profile page does not allow email editing
+#### BUG-3: Profile page does not allow email editing [STILL OPEN]
 - **Severity:** High
+- **Location:** /home/joachim/git/kit2/src/app/profile/page.tsx lines 175-184
 - **Steps to Reproduce:**
-  1. Log in and navigate to /profile
-  2. Expected: Both name and email fields are editable
-  3. Actual: Email field is disabled with message "E-Mail-Adresse kann nicht geaendert werden"
+  1. Navigate to /profile
+  2. Expected: Email field editable
+  3. Actual: Email field disabled
 - **Priority:** Fix before deployment
 
-#### BUG-4: No rate limiting on auth endpoints
-- **Severity:** Critical
-- **Steps to Reproduce:**
-  1. Send rapid POST requests to /api/auth/login with different passwords
-  2. Expected: After N attempts, receive 429 Too Many Requests
-  3. Actual: All requests are processed without any rate limiting
-- **Priority:** Fix before deployment
+#### BUG-4: No rate limiting on auth endpoints [FIXED]
+- Rate limiting now applied via checkRateLimit on login, signup, reset-password
 
-#### BUG-5: Missing security headers
-- **Severity:** Critical
-- **Steps to Reproduce:**
-  1. Inspect response headers from any page
-  2. Expected: X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS headers present
-  3. Actual: None of these security headers are configured
-- **Priority:** Fix before deployment
+#### BUG-5: Missing security headers [FIXED]
+- All required headers configured in next.config.ts
 
-#### BUG-6: Open redirect vulnerability in auth callback
-- **Severity:** Critical
-- **Steps to Reproduce:**
-  1. Craft URL: /api/auth/callback?code=valid_code&next=https://evil.com
-  2. Expected: Redirect only to internal paths
-  3. Actual: Redirects to arbitrary external URLs
-- **Priority:** Fix before deployment
+#### BUG-6: Open redirect vulnerability [FIXED]
+- Auth callback now uses ALLOWED_REDIRECTS whitelist
 
-#### BUG-7: Session token leaked in login API response body
+#### BUG-7: Session token leaked in login API response body [STILL OPEN]
 - **Severity:** Medium
+- **Location:** /home/joachim/git/kit2/src/app/api/auth/login/route.ts lines 36-39
 - **Steps to Reproduce:**
   1. POST to /api/auth/login with valid credentials
-  2. Inspect response JSON
-  3. Expected: Only success status returned (session managed via cookies)
-  4. Actual: Full session object including access_token is in response body
+  2. Response includes session: data.session with access_token
 - **Priority:** Fix before deployment
 
-#### BUG-8: Password visibility toggle missing on login and signup forms
+#### BUG-8: Password visibility toggle missing [STILL OPEN]
 - **Severity:** Low
-- **Steps to Reproduce:**
-  1. Go to /login or /signup
-  2. Expected: Password field has a visibility toggle (eye icon) as specified in tech design
-  3. Actual: Standard password input without visibility toggle
+- **Location:** /home/joachim/git/kit2/src/app/login/page.tsx, /home/joachim/git/kit2/src/app/signup/page.tsx
+- **Priority:** Fix in next sprint
+
+#### BUG-R1: Origin header spoofable in password-reset redirectTo [STILL OPEN]
+- **Severity:** Medium
+- **Location:** /home/joachim/git/kit2/src/app/api/auth/reset-password/route.ts line 24
+- **Priority:** Fix before deployment
+
+#### BUG-R2: Origin header spoofable in signup emailRedirectTo [STILL OPEN]
+- **Severity:** Medium
+- **Location:** /home/joachim/git/kit2/src/app/api/auth/signup/route.ts line 32
+- **Priority:** Fix before deployment
+
+#### BUG-R3: Profile GET uses .select('*') [STILL OPEN]
+- **Severity:** Low
+- **Location:** /home/joachim/git/kit2/src/app/api/auth/profile/route.ts line 21
 - **Priority:** Fix in next sprint
 
 ### Summary
-- **Acceptance Criteria:** 6/10 passed
-- **Bugs Found:** 8 total (3 critical, 2 high, 2 medium, 1 low)
-- **Security:** Issues found (rate limiting missing, security headers missing, open redirect, session token leak)
-- **Production Ready:** NO
-- **Recommendation:** Fix critical and high bugs first (BUG-4, BUG-5, BUG-6, BUG-1, BUG-3), then address medium bugs
+- **Acceptance Criteria:** 7/10 passed (up from 6/10)
+- **Previously found bugs:** 3 FIXED (BUG-4, BUG-5, BUG-6), 5 STILL OPEN (BUG-1, BUG-2, BUG-3, BUG-7, BUG-8)
+- **New bugs:** 3 (BUG-R1, BUG-R2, BUG-R3 -- all previously noted but now formally tracked)
+- **Remaining bugs:** 8 total (0 critical, 2 high, 4 medium, 2 low)
+- **tsk_ Refactoring Impact:** NONE -- auth feature uses tsk_profiles correctly, no regression
+- **Security:** Significantly improved (rate limiting added, security headers added, open redirect fixed)
+- **Production Ready:** NO (2 high-severity bugs remain: BUG-1, BUG-3)
+- **Recommendation:** Fix BUG-1 (auto-login) and BUG-3 (email editing) before deployment. BUG-7 and BUG-2 are medium priority.
 
 ## Deployment
 _To be added by /deploy_
