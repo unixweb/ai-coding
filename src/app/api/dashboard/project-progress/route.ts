@@ -34,7 +34,6 @@ export async function GET() {
         tasks:tasks(id, status)
       `)
       .in('team_id', teamIds)
-      .eq('status', 'active')
       .order('created_at', { ascending: false })
 
     // Calculate progress for each project

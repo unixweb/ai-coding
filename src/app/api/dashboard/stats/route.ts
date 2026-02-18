@@ -38,7 +38,6 @@ export async function GET() {
       .from('projects')
       .select('*', { count: 'exact', head: true })
       .in('team_id', teamIds)
-      .eq('status', 'active')
 
     // Get project IDs first
     const { data: projects } = await supabase
