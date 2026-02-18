@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       .from('tsk_team_members')
       .select(`
         *,
-        user:profiles!user_id(id, name, email)
+        user:tsk_profiles!user_id(id, name, email)
       `)
       .eq('team_id', team_id)
       .order('role')

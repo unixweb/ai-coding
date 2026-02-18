@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       .select(`
         *,
         project:tsk_projects(id, name),
-        assignee:profiles!assigned_to(id, name, email)
+        assignee:tsk_profiles!assigned_to(id, name, email)
       `)
       .order('created_at', { ascending: false })
 
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       .select(`
         *,
         project:tsk_projects(id, name),
-        assignee:profiles!assigned_to(id, name, email)
+        assignee:tsk_profiles!assigned_to(id, name, email)
       `)
       .single()
 
