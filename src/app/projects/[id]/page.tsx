@@ -97,7 +97,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     updateTaskStatus,
     deleteTask,
   } = useTasks(projectId);
-  const { members: teamMembers } = useTeamMembers();
+  const { members: teamMembers } = useTeamMembers(project?.team_id);
 
   // UI State
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");

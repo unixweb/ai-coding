@@ -12,15 +12,21 @@ export interface TeamMember {
   created_at: string
 }
 
-export function useTeamMembers() {
+export function useTeamMembers(teamId?: string) {
   const [members, setMembers] = useState<TeamMember[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const loadMembers = useCallback(async () => {
+    if (!teamId) {
+      setMembers([])
+      setIsLoading(false)
+      return
+    }
+
     try {
       setIsLoading(true)
-      const res = await fetch('/api/teams/members')
+      const res = await fetch(`/api/teams/members?team_id=${teamId}`)
 
       if (!res.ok) {
         throw new Error('Fehler beim Laden der Teammitglieder')
@@ -40,7 +46,7 @@ export function useTeamMembers() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [teamId])
 
   useEffect(() => {
     loadMembers()

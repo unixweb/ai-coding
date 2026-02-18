@@ -32,18 +32,21 @@ export const MOCK_PROJECTS: Project[] = [
     id: "project-1",
     name: "Website Relaunch",
     description: "Komplette Neugestaltung der Unternehmenswebsite mit modernem Design und verbesserter Nutzererfahrung.",
+    team_id: "team-1",
     created_at: "2026-01-15T10:00:00Z",
   },
   {
     id: "project-2",
     name: "Mobile App",
     description: "Native Mobile App fuer iOS und Android mit den wichtigsten Features der Web-Plattform.",
+    team_id: "team-1",
     created_at: "2026-01-20T14:00:00Z",
   },
   {
     id: "project-3",
     name: "API Integration",
     description: "Integration von Drittanbieter-APIs fuer Zahlungsabwicklung und Benachrichtigungen.",
+    team_id: "team-1",
     created_at: "2026-02-01T09:00:00Z",
   },
 ];
