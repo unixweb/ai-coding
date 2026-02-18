@@ -21,6 +21,13 @@ export async function GET(request: Request) {
 
     const supabase = await createClient()
 
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 })
+    }
+
     let query = supabase
       .from('tsk_tasks')
       .select(`
@@ -29,6 +36,7 @@ export async function GET(request: Request) {
         assignee:tsk_profiles!assigned_to(id, name, email)
       `)
       .order('created_at', { ascending: false })
+      .limit(500)
 
     if (project_id) {
       query = query.eq('project_id', project_id)
@@ -67,6 +75,13 @@ export async function POST(request: Request) {
     const data = createTaskSchema.parse(json)
 
     const supabase = await createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 })
+    }
 
     const { data: task, error } = await supabase
       .from('tsk_tasks')
