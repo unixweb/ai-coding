@@ -36,15 +36,12 @@ export default function SignupPage() {
         return
       }
 
-      toast.success(data.message || 'Registrierung erfolgreich!')
+      toast.success('Registrierung erfolgreich! Bitte melden Sie sich an.')
 
-      // Check if email confirmation is required
-      if (data.message?.includes('E-Mail')) {
-        toast.info('Bitte bestätigen Sie Ihre E-Mail-Adresse')
-      } else {
-        // Auto-login successful, redirect
-        router.push('/projects')
-      }
+      // Redirect to login page
+      setTimeout(() => {
+        router.push('/login')
+      }, 1000)
     } catch (error) {
       toast.error('Ein Fehler ist aufgetreten')
     } finally {
