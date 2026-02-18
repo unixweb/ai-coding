@@ -21,11 +21,30 @@ export async function GET() {
       .eq('id', user.id)
       .single()
 
+    // If no profile exists, create one automatically
+    if (profileError && profileError.code === 'PGRST116') {
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          name: user.email?.split('@')[0] || 'User',
+          email: user.email,
+        })
+        .select()
+        .single()
+
+      if (createError) {
+        return NextResponse.json({ error: createError.message }, { status: 400 })
+      }
+
+      return NextResponse.json({ profile: newProfile, user })
+    }
+
     if (profileError) {
       return NextResponse.json({ error: profileError.message }, { status: 400 })
     }
 
-    return NextResponse.json({ profile })
+    return NextResponse.json({ profile, user })
   } catch (error) {
     return NextResponse.json(
       { error: 'Ein Fehler ist aufgetreten' },

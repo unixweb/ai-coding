@@ -5,7 +5,7 @@ import { z } from 'zod'
 const createProjectSchema = z.object({
   name: z.string().min(1, 'Projektname ist erforderlich').max(100, 'Projektname darf maximal 100 Zeichen lang sein'),
   description: z.string().optional(),
-  team_id: z.string().uuid('Ungültige Team-ID'),
+  team_id: z.string().uuid('Ungültige Team-ID').optional(),
 })
 
 export async function GET(request: Request) {
@@ -41,9 +41,35 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const json = await request.json()
-    const { name, description, team_id } = createProjectSchema.parse(json)
+    let { name, description, team_id } = createProjectSchema.parse(json)
 
     const supabase = await createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 })
+    }
+
+    // If no team_id provided, use user's first team
+    if (!team_id) {
+      const { data: membership, error: membershipError } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single()
+
+      if (membershipError || !membership) {
+        return NextResponse.json(
+          { error: 'Sie sind keinem Team zugeordnet. Bitte kontaktieren Sie einen Administrator.' },
+          { status: 400 }
+        )
+      }
+
+      team_id = membership.team_id
+    }
 
     const { data: project, error } = await supabase
       .from('projects')
